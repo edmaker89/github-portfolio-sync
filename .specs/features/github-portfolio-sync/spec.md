@@ -18,6 +18,7 @@ The reader-facing source of truth is [`docs/scope.md`](../../../docs/scope.md). 
 5. Only one run per owner is active at a time.
 6. Secrets never enter versioned exports, fixtures, logs or evidence.
 7. Bounded pages, timeouts and retries prevent infinite or silently truncated execution.
+8. Synchronization starts only after the schema sub-workflow confirms schema V1 is valid.
 
 ## Scope boundary
 
@@ -25,8 +26,8 @@ The feature uses only the public user and public owned-repository REST endpoints
 
 ## Verification
 
-The acceptance criteria are covered by `TC-01` through `TC-17` in [`docs/test-plan.md`](../../../docs/test-plan.md). An item is not complete without the expected database assertion and sanitized execution evidence.
+The acceptance criteria are covered by `TC-00A` through `TC-17` in [`docs/test-plan.md`](../../../docs/test-plan.md). An item is not complete without the expected database assertion and sanitized execution evidence.
 
 ## Open questions
 
-None. Runtime image versions will be selected and pinned as the first implementation action because they are implementation dependencies, not unresolved product scope.
+None. Provisioning the n8n and PostgreSQL runtime is outside this project's boundary.

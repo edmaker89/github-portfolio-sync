@@ -9,6 +9,7 @@ This project must not contain real credentials, private repository data or corpo
 - Keep `.env` files outside version control.
 - Use public GitHub metadata in examples and fixtures.
 - Review logs and screenshots before publishing evidence.
+- Protect the test API simulator with a dedicated n8n Header Auth credential while it is active.
+- Disable the test API simulator after collecting test evidence.
 
 Security issues found in this learning project should be reported privately to the repository owner rather than opened with sensitive details in a public issue.
-

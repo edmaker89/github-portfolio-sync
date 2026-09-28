@@ -1,11 +1,14 @@
 # Test plan — V1
 
-Tests use sanitized fixtures served by WireMock unless the case explicitly says `live`. Live tests are evidence checks, not the only way to validate failure behavior.
+Tests use sanitized, versioned fixtures served by a test-only n8n API simulator workflow unless the case explicitly says `live`. The simulator is protected with a dedicated Header Auth credential while active, is disabled after testing and is not part of the production flow. Live tests are evidence checks, not the only way to validate failure behavior.
 
 ## Coverage matrix
 
 | ID | Scenario | Expected result | Layer |
 |---|---|---|---|
+| TC-00A | Database has no project schema | Sub-workflow creates V1 atomically and returns `schema_ready=true`, `version=1`, `action=created` | Schema |
+| TC-00B | Database already has a valid V1 schema | Sub-workflow applies no DDL and returns `action=validated` | Schema |
+| TC-00C | Migration version and required objects disagree | Synchronization stops with `schema_drift`; no API request starts | Schema |
 | TC-01 | Valid profile and one repository page | Profile, repositories and successful run persisted | Integration |
 | TC-02 | More than 100 repositories with `Link: rel="next"` | All pages fetched once in order | Integration |
 | TC-03 | Same payload executed twice | One profile row and one row per repository ID; two successful run records | Integration |
@@ -36,7 +39,7 @@ Tests use sanitized fixtures served by WireMock unless the case explicitly says 
 
 ## Exit gate
 
-- TC-01 through TC-16 pass deterministically.
+- TC-00A through TC-16 pass deterministically.
 - TC-17 passes once against the live API.
 - No unresolved critical or high-severity defect remains.
 - Workflow exports and documentation match the tested version.

@@ -31,7 +31,8 @@ The project will focus on the engineering concerns that appear after the first s
 | Persistence | PostgreSQL |
 | Sync model | Full paginated reconciliation |
 | Triggers | Manual and daily at 03:00 `America/Sao_Paulo` |
-| Test strategy | Deterministic fixtures and a containerized mock API |
+| Schema management | Idempotent n8n sub-workflow with version validation |
+| Test strategy | Versioned fixtures and an n8n API simulator workflow |
 | Default example | `edmaker89` |
 
 ## Planned stack
@@ -39,7 +40,8 @@ The project will focus on the engineering concerns that appear after the first s
 - n8n
 - GitHub API
 - PostgreSQL
-- Docker Compose
+
+The project is deployment-agnostic. It assumes an existing n8n environment and a PostgreSQL database reachable by n8n, whether they run in a homelab, VPS, Coolify, Docker-based platform or managed/Enterprise installation.
 
 ## Project principles
 
@@ -55,4 +57,4 @@ The project will focus on the engineering concerns that appear after the first s
 - [Test plan](docs/test-plan.md)
 - [Security policy](SECURITY.md)
 
-The next milestone is the reproducible local environment and database schema.
+The next milestone is the database schema bootstrap and validation sub-workflow.

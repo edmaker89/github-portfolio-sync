@@ -5,14 +5,14 @@
 
 ## Outcome
 
-A person can clone the repository, supply a GitHub username and a read-only token, start the local stack, run the n8n workflow and inspect a current, traceable PostgreSQL projection of that user's public profile and owned public repositories.
+A person with an existing n8n environment and PostgreSQL database can import the sanitized workflows, configure credentials, run the synchronization and inspect a current, traceable projection of a GitHub user's public profile and owned public repositories.
 
 ## Functional requirements
 
 | ID | Requirement |
 |---|---|
 | FR-01 | Support both manual execution and a daily schedule at 03:00 `America/Sao_Paulo`. |
-| FR-02 | Validate configuration before creating an active synchronization run. |
+| FR-02 | Call a schema-management sub-workflow before synchronization; create V1 when absent, validate and skip when current, and fail explicitly on drift or unsupported version. |
 | FR-03 | Read `GET /users/{username}` using the n8n HTTP Request node. |
 | FR-04 | Read every page of `GET /users/{username}/repos` with `type=owner` and `per_page=100`. |
 | FR-05 | Include owned public forks and archived repositories, preserving their flags. |
@@ -25,7 +25,7 @@ A person can clone the repository, supply a GitHub username and a read-only toke
 | FR-12 | Retry transient network, `5xx` and database failures with bounded backoff. |
 | FR-13 | Reject overlapping runs for the same owner. |
 | FR-14 | Route unhandled failures to an error workflow that persists sanitized context. |
-| FR-15 | Export sanitized workflows and provide deterministic success and failure fixtures. |
+| FR-15 | Export sanitized workflows and provide deterministic success and failure fixtures through a test-only n8n API simulator workflow. |
 
 ## Non-functional requirements
 
@@ -34,7 +34,7 @@ A person can clone the repository, supply a GitHub username and a read-only toke
 | NFR-01 | A repeated successful synchronization with unchanged source data creates no duplicate profile or repository rows. |
 | NFR-02 | No credential, authorization header or private repository data may be committed or exposed in evidence. |
 | NFR-03 | Requests are serial and bounded by timeout, page and retry limits. |
-| NFR-04 | The local environment is reproducible with Docker Compose and pinned image versions. |
+| NFR-04 | Workflows remain portable across existing n8n deployment models and do not manage the n8n runtime itself. |
 | NFR-05 | The workflow is diagnosable from the run record, sanitized errors, GitHub request ID and n8n execution. |
 | NFR-06 | All destructive-looking reconciliation occurs only after the full source snapshot is known to be valid. |
 | NFR-07 | Public documentation must distinguish implemented behavior from planned behavior. |
@@ -51,6 +51,8 @@ A person can clone the repository, supply a GitHub username and a read-only toke
 | `REQUEST_TIMEOUT_MS` | `30000` | Abort requests that do not begin a response in time |
 | GitHub token | none | Read-only credential stored in n8n, never in workflow JSON or `.env.example` |
 
+Database connection details are stored in an n8n PostgreSQL credential. They are prerequisites supplied by the operator, not infrastructure provisioned by this project.
+
 ## Included data
 
 - public user identity and profile metadata;
@@ -65,9 +67,10 @@ A person can clone the repository, supply a GitHub username and a read-only toke
 - private repositories or corporate data;
 - issues, pull requests, commits, releases, repository contents and traffic analytics;
 - organizations and repositories merely contributed to by the user;
-- GraphQL, webhooks, bidirectional synchronization or a custom user interface;
+- GraphQL, production webhook ingestion, bidirectional synchronization or a custom user interface;
 - AI, agents, LLMs or RAG;
 - Kubernetes, queue mode, multi-worker n8n, GitOps or a production n8n database;
+- provisioning, updating, securing, backing up or monitoring the n8n/PostgreSQL runtime;
 - publishing a generic CRUD solely to demonstrate every HTTP verb;
 - OAuth2: a read-only token is the proportionate authentication model for V1.
 
@@ -75,16 +78,18 @@ A person can clone the repository, supply a GitHub username and a read-only toke
 
 The V1 scope is complete only when:
 
-1. a clean clone can start the documented local environment;
-2. the manual and scheduled paths reach the same synchronization logic;
-3. live GitHub data for a public user is persisted with every repository page;
-4. a second unchanged run creates no duplicate domain rows;
-5. a renamed or updated repository changes the existing row identified by GitHub ID;
-6. a repository absent from a fully successful later run becomes inactive;
-7. a repository absent only because page two failed remains active;
-8. `401`, `403`, `429`, `5xx`, timeout, invalid payload and database outage paths are evidenced;
-9. credentials are absent from Git history, workflow exports, fixtures, screenshots and logs;
-10. architecture, troubleshooting, test evidence and sanitized workflows are present in the repository.
+1. the schema sub-workflow creates V1 when absent and returns `created`;
+2. the same sub-workflow returns `validated` without reapplying DDL when V1 is already valid;
+3. schema drift or an unsupported version stops synchronization with an explicit diagnostic;
+4. the manual and scheduled paths reach the same synchronization logic;
+5. live GitHub data for a public user is persisted with every repository page;
+6. a second unchanged run creates no duplicate domain rows;
+7. a renamed or updated repository changes the existing row identified by GitHub ID;
+8. a repository absent from a fully successful later run becomes inactive;
+9. a repository absent only because page two failed remains active;
+10. `401`, `403`, `429`, `5xx`, timeout, invalid payload and database outage paths are evidenced;
+11. credentials are absent from Git history, workflow exports, fixtures, screenshots and logs;
+12. architecture, troubleshooting, test evidence and sanitized workflows are present in the repository.
 
 ## Capability boundary
 

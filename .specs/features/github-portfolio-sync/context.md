@@ -2,7 +2,7 @@
 
 ## Current repository
 
-The repository currently contains specification and policy documents only. No Docker stack, SQL schema, workflow export, fixture or automated verification command exists yet.
+The repository currently contains specification and policy documents only. No schema-management workflow, synchronization workflow, fixture or automated verification artifact exists yet.
 
 ## Relevant files
 
@@ -20,7 +20,8 @@ The repository currently contains specification and policy documents only. No Do
 - `GET /users/{username}/repos` with `type=owner`, `sort=updated`, `direction=desc`, `per_page=100` and `page=N`.
 - n8n HTTP Request node with response headers and status enabled.
 - PostgreSQL for domain and audit persistence.
-- WireMock for deterministic API responses during tests.
+- Existing n8n and PostgreSQL environments supplied by the operator.
+- Test-only n8n API simulator workflow for deterministic HTTP responses.
 
 ## Constraints for implementation
 
@@ -28,4 +29,6 @@ The repository currently contains specification and policy documents only. No Do
 - Do not add a private-data path to V1.
 - Do not reconcile inactive rows before every expected page is persisted.
 - Do not rely only on live GitHub responses to test failures.
+- Do not provision or couple the project to a specific n8n hosting model.
+- Do not continue to the GitHub API unless schema V1 has been validated by the schema sub-workflow.
 - Do not claim a test, feature or skill is demonstrated before its artifact and evidence exist.
