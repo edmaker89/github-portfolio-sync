@@ -1,0 +1,22 @@
+info:
+  name: Get Profile - No Auth
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: https://n8n-homelab.edmaker.dev.br/webhook-test/3da72337-4263-4f71-bbb2-a8c8dea89093/p01/github/users/:username?scenario=happy
+  params:
+    - name: scenario
+      value: happy
+      type: query
+    - name: username
+      value: octacat
+      type: path
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

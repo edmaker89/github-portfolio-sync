@@ -1,0 +1,30 @@
+info:
+  name: Get REPOS - PAGE 2
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: https://n8n-homelab.edmaker.dev.br/webhook-test/3da72337-4263-4f71-bbb2-a8c8dea89093/p01/github/users/:username/repos?scenario=happy&page=2
+  params:
+    - name: scenario
+      value: happy
+      type: query
+    - name: page
+      value: "2"
+      type: query
+    - name: username
+      value: octacat
+      type: path
+  auth:
+    type: apikey
+    key: Authorization
+    value: 0d835637f3ae29ae3cb320ae153d981ca369ccf62385b4fde6055ac0c02cace8
+    placement: header
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
