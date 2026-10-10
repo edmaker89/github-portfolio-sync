@@ -1,0 +1,205 @@
+{
+  "id": "TdDBSVc8fyTvF4rP",
+  "name": "Error Handler Test",
+  "description": null,
+  "active": true,
+  "activeVersionId": "a41db843-6f7c-462b-adb6-33c48f8a3291",
+  "createdAt": "2026-10-02T23:59:39.697Z",
+  "updatedAt": "2026-10-03T00:06:47.119Z",
+  "isArchived": false,
+  "versionId": "a41db843-6f7c-462b-adb6-33c48f8a3291",
+  "versionCounter": 21,
+  "sourceWorkflowId": null,
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "path": "github-sync/error-handler-test",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -448,
+        -48
+      ],
+      "id": "470beed9-9f9c-4f6c-9669-c98d52567b02",
+      "name": "Webhook",
+      "webhookId": "e83fc547-4ff4-46d0-80c8-32edcffa21f7"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d8854a89-e9fc-46eb-8d10-f0837565beff",
+              "name": "run_id",
+              "value": "SEU-RUN-ID-REAL",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -224,
+        -48
+      ],
+      "id": "aa411de4-e555-4ea4-9cee-ea3269334ae9",
+      "name": "Set Test Context"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{\n  'P01_SAFE_ERROR:' +\n  JSON.stringify({\n    run_id: $json.run_id,\n    stage: 'error_handler_gate',\n    http_status: 401,\n    github_request_id: 'P01-GATE-TEST',\n    category: 'authentication',\n    attempt: 0,\n    retryable: false,\n    message: 'Authorization: Bearer ghp_FAKE_123456789012345678901234567890 controlled failure'\n  })\n}}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -48
+      ],
+      "id": "865b50b3-8a8a-48fb-a7e1-3d044f799c5c",
+      "name": "Stop and Error"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Test Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Test Context": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "i7QXkiz6EXgXtYnH",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [],
+  "activeVersion": {
+    "versionId": "a41db843-6f7c-462b-adb6-33c48f8a3291",
+    "workflowId": "TdDBSVc8fyTvF4rP",
+    "nodes": [
+      {
+        "parameters": {
+          "path": "github-sync/error-handler-test",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          -448,
+          -48
+        ],
+        "id": "470beed9-9f9c-4f6c-9669-c98d52567b02",
+        "name": "Webhook",
+        "webhookId": "e83fc547-4ff4-46d0-80c8-32edcffa21f7"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "d8854a89-e9fc-46eb-8d10-f0837565beff",
+                "name": "run_id",
+                "value": "SEU-RUN-ID-REAL",
+                "type": "string"
+              }
+            ]
+          },
+          "includeOtherFields": true,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.5,
+        "position": [
+          -224,
+          -48
+        ],
+        "id": "aa411de4-e555-4ea4-9cee-ea3269334ae9",
+        "name": "Set Test Context"
+      },
+      {
+        "parameters": {
+          "errorMessage": "={{\n  'P01_SAFE_ERROR:' +\n  JSON.stringify({\n    run_id: $json.run_id,\n    stage: 'error_handler_gate',\n    http_status: 401,\n    github_request_id: 'P01-GATE-TEST',\n    category: 'authentication',\n    attempt: 0,\n    retryable: false,\n    message: 'Authorization: Bearer ghp_FAKE_123456789012345678901234567890 controlled failure'\n  })\n}}"
+        },
+        "type": "n8n-nodes-base.stopAndError",
+        "typeVersion": 1,
+        "position": [
+          0,
+          -48
+        ],
+        "id": "865b50b3-8a8a-48fb-a7e1-3d044f799c5c",
+        "name": "Stop and Error"
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Set Test Context",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Test Context": {
+        "main": [
+          [
+            {
+              "node": "Stop and Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Douglas E Silva",
+    "name": "Version a41db843",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-03T00:06:47.123Z",
+    "updatedAt": "2026-10-03T00:06:49.937Z",
+    "workflowPublishHistory": [
+      {
+        "id": 10,
+        "workflowId": "TdDBSVc8fyTvF4rP",
+        "versionId": "a41db843-6f7c-462b-adb6-33c48f8a3291",
+        "event": "activated",
+        "userId": "97cb7e86-2340-4ee9-97a6-b4951ec9a5cf",
+        "createdAt": "2026-10-03T00:06:49.917Z"
+      }
+    ]
+  }
+}
