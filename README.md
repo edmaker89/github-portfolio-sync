@@ -4,7 +4,13 @@ Reliable ingestion of public GitHub portfolio data with n8n and PostgreSQL.
 
 ## Status
 
-Scope and architecture are approved. Implementation has not started yet.
+Scope and architecture are approved. V1 core (Stages 5–8) is **implemented and tested**:
+
+- **Implemented and evidenced:** profile ingestion, repository ingestion with pagination, full reconciliation (deactivate only after a fully successful run), primary/secondary rate-limit handling, bounded retry/backoff for `5xx` and timeouts, repository validation failures, and Error Handler persistence to `sync_errors` on a production execution. Test evidence: [`evidence/`](evidence/) (TC-05 … TC-13, [`ERROR-HANDLER.md`](evidence/ERROR-HANDLER.md), plus [`ETAPA8-EXECUCAO.md`](evidence/ETAPA8-EXECUCAO.md)); checklist: [`evidence/CHECKLIST.md`](evidence/CHECKLIST.md).
+- **Implemented, still pending dedicated evidence:** schema sub-workflow scenarios (TC-00A/B/C), happy-path/idempotency cases (TC-01 … TC-04), PostgreSQL outage (TC-14), concurrent runs (TC-15), `MAX_PAGES` guardrail (TC-16) and live end-to-end (TC-17).
+- **Planned, not implemented (NFR-07):** nothing outside the approved V1 scope; see [`docs/scope.md`](docs/scope.md) for what is explicitly deferred.
+
+Details: [`docs/`](docs/) for architecture, scope and test plan; [`evidence/`](evidence/) for executed-test traces; [`workflows/sanitized/`](workflows/sanitized/) for reviewable workflow exports.
 
 ## Objective
 

@@ -1,0 +1,540 @@
+{
+  "id": "i7QXkiz6EXgXtYnH",
+  "name": "Error Handler",
+  "description": null,
+  "active": true,
+  "activeVersionId": "c3672b71-d9ad-4e96-ae33-36761d1bf9a8",
+  "createdAt": "2026-10-02T10:06:48.095Z",
+  "updatedAt": "2026-10-10T16:03:47.304Z",
+  "isArchived": false,
+  "versionId": "c3672b71-d9ad-4e96-ae33-36761d1bf9a8",
+  "versionCounter": 68,
+  "sourceWorkflowId": null,
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "693e02db-f995-4bee-b069-77f6c763bb76",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        -112
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "812cd10c-478f-40a6-b7d6-6a375680c1fb",
+      "name": "Normalize Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        -112
+      ],
+      "parameters": {
+        "jsCode": "const src = $input.first()?.json ?? {};\n\nconst execution = src.execution ?? {};\nconst trigger = src.trigger ?? {};\nconst workflow = src.workflow ?? {};\n\nconst err =\n  execution.error ??\n  trigger.error ??\n  src.error ??\n  {};\n\nconst ALLOWED_CATEGORIES = new Set([\n  'authentication',\n  'authorization',\n  'rate_limit',\n  'timeout',\n  'network',\n  'github_server',\n  'database',\n  'validation',\n  'schema',\n  'page_limit',\n  'concurrency',\n  'unexpected',\n]);\n\nfunction asString(value, fallback = '') {\n  if (typeof value === 'string') return value;\n\n  if (\n    typeof value === 'number' ||\n    typeof value === 'boolean'\n  ) {\n    return String(value);\n  }\n\n  // Não serializar objetos arbitrários:\n  // podem conter headers, payloads ou credentials.\n  return fallback;\n}\n\nfunction basicRedact(value) {\n  let text = asString(value);\n\n  // URLs de banco com usuário/senha.\n  text = text.replace(\n    /\\b(?:postgres(?:ql)?|mysql|mariadb):\\/\\/[^\\s]+/gi,\n    '[REDACTED_DB_URL]'\n  );\n\n  // Authorization Bearer / Basic.\n  text = text.replace(\n    /\\b(Bearer|Basic)\\s+[A-Za-z0-9._~+\\/=-]+/gi,\n    '$1 [REDACTED]'\n  );\n\n  // Tokens GitHub clássicos / fine-grained.\n  text = text.replace(\n    /\\b(?:github_pat_|gh[pousr]_)[A-Za-z0-9_]{10,}/gi,\n    '[REDACTED_GITHUB_TOKEN]'\n  );\n\n  // Campos comuns de segredo.\n  text = text.replace(\n    /\\b(authorization|token|password|passwd|pwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token)\\b\\s*[:=]\\s*[\"']?[^,\\s;}\"']+/gi,\n    '$1=[REDACTED]'\n  );\n\n  return text;\n}\n\nfunction parseSafeEnvelope(message) {\n  const marker = 'P01_SAFE_ERROR:';\n\n  const index = message.indexOf(marker);\n\n  if (index === -1) {\n    return {};\n  }\n\n  const candidate = message\n    .slice(index + marker.length)\n    .split('\\n')[0]\n    .trim();\n\n  try {\n    const parsed = JSON.parse(candidate);\n\n    if (\n      parsed &&\n      typeof parsed === 'object' &&\n      !Array.isArray(parsed)\n    ) {\n      return parsed;\n    }\n  } catch {\n    // Ignora envelope inválido.\n  }\n\n  return {};\n}\n\nfunction normalizeStatus(...values) {\n  for (const value of values) {\n    if (value === null || value === undefined || value === '') {\n      continue;\n    }\n\n    const n = Number(value);\n\n    if (\n      Number.isInteger(n) &&\n      n >= 100 &&\n      n <= 599\n    ) {\n      return n;\n    }\n  }\n\n  return null;\n}\n\nfunction normalizeBoolean(value) {\n  if (typeof value === 'boolean') return value;\n\n  if (typeof value === 'string') {\n    if (value.toLowerCase() === 'true') return true;\n    if (value.toLowerCase() === 'false') return false;\n  }\n\n  return null;\n}\n\nfunction classifyError({\n  explicitCategory,\n  message,\n  status,\n  nodeName,\n}) {\n  if (ALLOWED_CATEGORIES.has(explicitCategory)) {\n    return explicitCategory;\n  }\n\n  const m = `${message ?? ''}`.toLowerCase();\n  const node = `${nodeName ?? ''}`.toLowerCase();\n\n  if (\n    /page.?limit|max.?pages|pagination.?limit/.test(m)\n  ) {\n    return 'page_limit';\n  }\n\n  if (\n    /schema|migration|relation .* does not exist|column .* does not exist/.test(m)\n  ) {\n    return 'schema';\n  }\n\n  if (\n    /concurr|deadlock|already running|lock timeout/.test(m)\n  ) {\n    return 'concurrency';\n  }\n\n  if (\n    status === 401 ||\n    /bad credentials|invalid token|authentication failed/.test(m)\n  ) {\n    return 'authentication';\n  }\n\n  if (\n    status === 429 ||\n    /rate.?limit|secondary.?rate.?limit|abuse.?limit/.test(m)\n  ) {\n    return 'rate_limit';\n  }\n\n  if (status === 403) {\n    return 'authorization';\n  }\n\n  if (\n    status === 408 ||\n    status === 504 ||\n    /timeout|timed out|etimedout/.test(m)\n  ) {\n    return 'timeout';\n  }\n\n  if (\n    node.includes('postgres') ||\n    node.includes('database') ||\n    /\\bsqlstate\\b/.test(m)\n  ) {\n    return 'database';\n  }\n\n  if (\n    /enotfound|econnreset|econnrefused|eai_again|socket hang up|network error/.test(m)\n  ) {\n    return 'network';\n  }\n\n  if (\n    status !== null &&\n    status >= 500 &&\n    status <= 599\n  ) {\n    return 'github_server';\n  }\n\n  if (\n    status === 400 ||\n    status === 422 ||\n    /validation|invalid payload|required field/.test(m)\n  ) {\n    return 'validation';\n  }\n\n  return 'unexpected';\n}\n\n\n// ----------------------------------------------------\n// Extrair somente dados conhecidos\n// ----------------------------------------------------\n\nconst rawMessage =\n  asString(err.message) ||\n  asString(err.description) ||\n  'Unhandled workflow error';\n\nconst safeEnvelope = parseSafeEnvelope(rawMessage);\n\nconst nodeName =\n  asString(safeEnvelope.node_name) ||\n  asString(execution.lastNodeExecuted) ||\n  asString(err.node?.name) ||\n  asString(err.nodeName) ||\n  null;\n\nconst httpStatus = normalizeStatus(\n  safeEnvelope.http_status,\n  safeEnvelope.httpStatus,\n  err.httpCode,\n  err.statusCode,\n  err.status,\n  err.context?.httpCode,\n  err.context?.statusCode\n);\n\n\n// ----------------------------------------------------\n// GitHub Request ID\n//\n// Lemos somente o header explicitamente permitido.\n// Nunca copiamos o objeto headers completo.\n// ----------------------------------------------------\n\nconst responseHeaders =\n  err.response?.headers ??\n  err.context?.response?.headers ??\n  err.context?.headers ??\n  {};\n\nconst githubRequestId =\n  safeEnvelope.github_request_id ??\n  safeEnvelope.githubRequestId ??\n  err.context?.github_request_id ??\n  err.context?.githubRequestId ??\n  responseHeaders?.['x-github-request-id'] ??\n  responseHeaders?.['X-GitHub-Request-Id'] ??\n  null;\n\n\n// ----------------------------------------------------\n// Correlação\n// ----------------------------------------------------\n\nconst runId =\n  safeEnvelope.run_id ??\n  safeEnvelope.runId ??\n  err.context?.run_id ??\n  err.context?.runId ??\n  null;\n\nconst stage =\n  safeEnvelope.stage ??\n  err.context?.stage ??\n  nodeName ??\n  'unknown';\n\n\n// ----------------------------------------------------\n// Categoria\n// ----------------------------------------------------\n\nconst category = classifyError({\n  explicitCategory:\n    safeEnvelope.category ??\n    err.context?.category,\n  message: safeEnvelope.message ?? rawMessage,\n  status: httpStatus,\n  nodeName,\n});\n\n\n// ----------------------------------------------------\n// Tentativa\n// ----------------------------------------------------\n\nlet attempt = Number(\n  safeEnvelope.attempt ??\n  err.context?.attempt ??\n  0\n);\n\nif (!Number.isInteger(attempt) || attempt < 0) {\n  attempt = 0;\n}\n\n\n// ----------------------------------------------------\n// Retryable\n// ----------------------------------------------------\n\nconst explicitRetryable = normalizeBoolean(\n  safeEnvelope.retryable ??\n  err.context?.retryable\n);\n\nconst RETRYABLE_DEFAULTS = {\n  authentication: false,\n  authorization: false,\n  rate_limit: true,\n  timeout: true,\n  network: true,\n  github_server: true,\n  database: true,\n  validation: false,\n  schema: false,\n  page_limit: false,\n  concurrency: true,\n  unexpected: false,\n};\n\nconst retryable =\n  explicitRetryable ??\n  RETRYABLE_DEFAULTS[category] ??\n  false;\n\nreturn [\n  {\n    json: {\n      run_id: runId,\n\n      workflow_name:\n        asString(workflow.name) || 'unknown',\n\n      execution_id:\n        asString(execution.id) || null,\n\n      node_name: nodeName,\n\n      stage,\n\n      http_status: httpStatus,\n\n      github_request_id:\n        githubRequestId !== null\n          ? asString(githubRequestId)\n          : null,\n\n      category,\n\n      attempt,\n\n      retryable,\n\n      // Já fazemos uma primeira sanitização aqui.\n      // O próximo node faz a sanitização definitiva.\n      message_candidate: basicRedact(\n        safeEnvelope.message ?? rawMessage\n      ).slice(0, 1200),\n    },\n  },\n];"
+      }
+    },
+    {
+      "id": "906b7912-93d4-45a1-ad43-2df3db2fd1cb",
+      "name": "Has Run ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        160,
+        -96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cb0be96b-aa02-400f-a0be-0b69bcb0d2fe",
+              "leftValue": "={{ Number.isInteger($json.run_id) && $json.run_id > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0c9b5dca-d4da-45d6-ab52-8c3932570c41",
+      "name": "Insert sync_errors",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "retryOnFail": true,
+      "onError": "continueErrorOutput",
+      "position": [
+        416,
+        -192
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO public.sync_errors (\n    run_id,\n    workflow_name,\n    workflow_execution_id,\n    stage,\n    node_name,\n    category,\n    http_status,\n    github_request_id,\n    attempt,\n    retryable,\n    safe_message\n)\nVALUES (\n    ($1::jsonb ->> 'run_id')::BIGINT,\n    $1::jsonb ->> 'workflow_name',\n    $1::jsonb ->> 'workflow_execution_id',\n    $1::jsonb ->> 'stage',\n    $1::jsonb ->> 'node_name',\n    $1::jsonb ->> 'category',\n    NULLIF($1::jsonb ->> 'http_status', '')::INTEGER,\n    $1::jsonb ->> 'github_request_id',\n    NULLIF($1::jsonb ->> 'attempt', '')::INTEGER,\n    COALESCE(\n        NULLIF($1::jsonb ->> 'retryable', '')::BOOLEAN,\n        false\n    ),\n    $1::jsonb ->> 'safe_message'\n)\nRETURNING\n    id,\n    run_id,\n    occurred_at,\n    workflow_execution_id;",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "8ee72290-69f2-4a14-b5b1-1e4f0f0d132e",
+      "name": "Keep N8N Execution Evidence",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        672,
+        -64
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "adfe1cf7-9a70-4ef3-91af-2abaa1176696",
+              "name": "persisted",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "8d322096-5c28-4906-9299-fb24aacd3b73",
+              "name": "evidence",
+              "value": "n8n_execution",
+              "type": "string"
+            },
+            {
+              "id": "eb5d2eb9-ec86-4b4c-a89d-af5e99781399",
+              "name": "original_execution_id",
+              "value": "={{ $('Sanitize Error').item.json.execution_id }}",
+              "type": "string"
+            },
+            {
+              "id": "ad8191aa-f06e-43f0-b1ce-179c8c61d9a7",
+              "name": "reason",
+              "value": "persistence_unavailable_or_missing_run_id",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "925ffff9-b949-4cbf-b0e5-b59f6b738610",
+      "name": "Sanitize Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        -112
+      ],
+      "parameters": {
+        "jsCode": "const input = $input.first()?.json ?? {};\n\nconst ALLOWED_CATEGORIES = new Set([\n  'authentication',\n  'authorization',\n  'rate_limit',\n  'timeout',\n  'network',\n  'github_server',\n  'database',\n  'validation',\n  'schema',\n  'page_limit',\n  'concurrency',\n  'unexpected',\n]);\n\nfunction sanitizeText(value, maxLength = 500) {\n  if (value === null || value === undefined) {\n    return null;\n  }\n\n  let text = String(value);\n\n  // Connection strings.\n  text = text.replace(\n    /\\b(?:postgres(?:ql)?|mysql|mariadb):\\/\\/[^\\s]+/gi,\n    '[REDACTED_DB_URL]'\n  );\n\n  // Authorization.\n  text = text.replace(\n    /\\b(Bearer|Basic)\\s+[A-Za-z0-9._~+\\/=-]+/gi,\n    '$1 [REDACTED]'\n  );\n\n  // GitHub tokens.\n  text = text.replace(\n    /\\b(?:github_pat_|gh[pousr]_)[A-Za-z0-9_]{10,}/gi,\n    '[REDACTED_GITHUB_TOKEN]'\n  );\n\n  // JWT.\n  text = text.replace(\n    /\\b[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\b/g,\n    '[REDACTED_JWT]'\n  );\n\n  // JSON secrets.\n  text = text.replace(\n    /(\"(?:authorization|token|password|passwd|pwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token)\"\\s*:\\s*\")[^\"]*(\")/gi,\n    '$1[REDACTED]$2'\n  );\n\n  // key=value secrets.\n  text = text.replace(\n    /\\b(authorization|token|password|passwd|pwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token)\\b\\s*[:=]\\s*[\"']?[^,\\s;}\"']+/gi,\n    '$1=[REDACTED]'\n  );\n\n  // Segredos em query string.\n  text = text.replace(\n    /([?&](?:token|access_token|api_key|apikey|secret|password)=)[^&\\s]+/gi,\n    '$1[REDACTED]'\n  );\n\n  // Evitar log multiline.\n  text = text\n    .replace(/[\\r\\n\\t]+/g, ' ')\n    .replace(/\\s{2,}/g, ' ')\n    .trim();\n\n  return text.slice(0, maxLength);\n}\n\nfunction sanitizeIdentifier(value, maxLength = 128) {\n  if (\n    value === null ||\n    value === undefined ||\n    value === ''\n  ) {\n    return null;\n  }\n\n  return sanitizeText(value, maxLength);\n}\n\nlet httpStatus = Number(input.http_status);\n\nif (\n  !Number.isInteger(httpStatus) ||\n  httpStatus < 100 ||\n  httpStatus > 599\n) {\n  httpStatus = null;\n}\n\nlet attempt = Number(input.attempt);\n\nif (!Number.isInteger(attempt) || attempt < 0) {\n  attempt = 0;\n}\n\nconst category =\n  ALLOWED_CATEGORIES.has(input.category)\n    ? input.category\n    : 'unexpected';\n\n\n// ----------------------------------------------------\n// WHITELIST FINAL\n//\n// Tudo que não estiver declarado aqui desaparece.\n// ----------------------------------------------------\n\nlet runId = Number(input.run_id);\n\nif (\n  !Number.isSafeInteger(runId) ||\n  runId <= 0\n) {\n  runId = null;\n}\n\nreturn [\n  {\n    json: {\n      run_id: runId,\n\n      workflow_name:\n        sanitizeText(\n          input.workflow_name ?? 'unknown',\n          160\n        ),\n\n      workflow_execution_id:\n        sanitizeIdentifier(\n          input.execution_id ??\n          input.workflow_execution_id,\n          64\n        ),\n\n      stage:\n        sanitizeText(\n          input.stage ?? 'unknown',\n          100\n        ),\n\n      node_name:\n        sanitizeText(\n          input.node_name,\n          160\n        ),\n\n      category,\n\n      http_status: httpStatus,\n\n      github_request_id:\n        sanitizeIdentifier(\n          input.github_request_id,\n          128\n        ),\n\n      attempt,\n\n      retryable:\n        input.retryable === true,\n\n      safe_message:\n        sanitizeText(\n          input.message_candidate ??\n          input.safe_message ??\n          'Unhandled workflow error',\n          600\n        ),\n    },\n  },\n];"
+      }
+    },
+    {
+      "id": "975571e1-efbd-4aab-b90e-ab4af50a1db3",
+      "name": "Persisted",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        640,
+        -256
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "75af8f15-490e-4c8b-81de-957828be0ae8",
+              "name": "persisted",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "b6b110d2-6b5e-4805-a6dc-9b5f78e85286",
+              "name": "error_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c4d51da3-004e-44bb-99dd-1563b534cab2",
+              "name": "run_id",
+              "value": "={{ $json.run_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Error": {
+      "main": [
+        [
+          {
+            "node": "Sanitize Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Run ID?": {
+      "main": [
+        [
+          {
+            "node": "Insert sync_errors",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Keep N8N Execution Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert sync_errors": {
+      "main": [
+        [
+          {
+            "node": "Persisted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Keep N8N Execution Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize Error": {
+      "main": [
+        [
+          {
+            "node": "Has Run ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [],
+  "activeVersion": {
+    "versionId": "c3672b71-d9ad-4e96-ae33-36761d1bf9a8",
+    "workflowId": "i7QXkiz6EXgXtYnH",
+    "nodes": [
+      {
+        "id": "693e02db-f995-4bee-b069-77f6c763bb76",
+        "name": "Error Trigger",
+        "type": "n8n-nodes-base.errorTrigger",
+        "typeVersion": 1,
+        "position": [
+          -592,
+          -112
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "812cd10c-478f-40a6-b7d6-6a375680c1fb",
+        "name": "Normalize Error",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -304,
+          -112
+        ],
+        "parameters": {
+          "jsCode": "const src = $input.first()?.json ?? {};\n\nconst execution = src.execution ?? {};\nconst trigger = src.trigger ?? {};\nconst workflow = src.workflow ?? {};\n\nconst err =\n  execution.error ??\n  trigger.error ??\n  src.error ??\n  {};\n\nconst ALLOWED_CATEGORIES = new Set([\n  'authentication',\n  'authorization',\n  'rate_limit',\n  'timeout',\n  'network',\n  'github_server',\n  'database',\n  'validation',\n  'schema',\n  'page_limit',\n  'concurrency',\n  'unexpected',\n]);\n\nfunction asString(value, fallback = '') {\n  if (typeof value === 'string') return value;\n\n  if (\n    typeof value === 'number' ||\n    typeof value === 'boolean'\n  ) {\n    return String(value);\n  }\n\n  // Não serializar objetos arbitrários:\n  // podem conter headers, payloads ou credentials.\n  return fallback;\n}\n\nfunction basicRedact(value) {\n  let text = asString(value);\n\n  // URLs de banco com usuário/senha.\n  text = text.replace(\n    /\\b(?:postgres(?:ql)?|mysql|mariadb):\\/\\/[^\\s]+/gi,\n    '[REDACTED_DB_URL]'\n  );\n\n  // Authorization Bearer / Basic.\n  text = text.replace(\n    /\\b(Bearer|Basic)\\s+[A-Za-z0-9._~+\\/=-]+/gi,\n    '$1 [REDACTED]'\n  );\n\n  // Tokens GitHub clássicos / fine-grained.\n  text = text.replace(\n    /\\b(?:github_pat_|gh[pousr]_)[A-Za-z0-9_]{10,}/gi,\n    '[REDACTED_GITHUB_TOKEN]'\n  );\n\n  // Campos comuns de segredo.\n  text = text.replace(\n    /\\b(authorization|token|password|passwd|pwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token)\\b\\s*[:=]\\s*[\"']?[^,\\s;}\"']+/gi,\n    '$1=[REDACTED]'\n  );\n\n  return text;\n}\n\nfunction parseSafeEnvelope(message) {\n  const marker = 'P01_SAFE_ERROR:';\n\n  const index = message.indexOf(marker);\n\n  if (index === -1) {\n    return {};\n  }\n\n  const candidate = message\n    .slice(index + marker.length)\n    .split('\\n')[0]\n    .trim();\n\n  try {\n    const parsed = JSON.parse(candidate);\n\n    if (\n      parsed &&\n      typeof parsed === 'object' &&\n      !Array.isArray(parsed)\n    ) {\n      return parsed;\n    }\n  } catch {\n    // Ignora envelope inválido.\n  }\n\n  return {};\n}\n\nfunction normalizeStatus(...values) {\n  for (const value of values) {\n    if (value === null || value === undefined || value === '') {\n      continue;\n    }\n\n    const n = Number(value);\n\n    if (\n      Number.isInteger(n) &&\n      n >= 100 &&\n      n <= 599\n    ) {\n      return n;\n    }\n  }\n\n  return null;\n}\n\nfunction normalizeBoolean(value) {\n  if (typeof value === 'boolean') return value;\n\n  if (typeof value === 'string') {\n    if (value.toLowerCase() === 'true') return true;\n    if (value.toLowerCase() === 'false') return false;\n  }\n\n  return null;\n}\n\nfunction classifyError({\n  explicitCategory,\n  message,\n  status,\n  nodeName,\n}) {\n  if (ALLOWED_CATEGORIES.has(explicitCategory)) {\n    return explicitCategory;\n  }\n\n  const m = `${message ?? ''}`.toLowerCase();\n  const node = `${nodeName ?? ''}`.toLowerCase();\n\n  if (\n    /page.?limit|max.?pages|pagination.?limit/.test(m)\n  ) {\n    return 'page_limit';\n  }\n\n  if (\n    /schema|migration|relation .* does not exist|column .* does not exist/.test(m)\n  ) {\n    return 'schema';\n  }\n\n  if (\n    /concurr|deadlock|already running|lock timeout/.test(m)\n  ) {\n    return 'concurrency';\n  }\n\n  if (\n    status === 401 ||\n    /bad credentials|invalid token|authentication failed/.test(m)\n  ) {\n    return 'authentication';\n  }\n\n  if (\n    status === 429 ||\n    /rate.?limit|secondary.?rate.?limit|abuse.?limit/.test(m)\n  ) {\n    return 'rate_limit';\n  }\n\n  if (status === 403) {\n    return 'authorization';\n  }\n\n  if (\n    status === 408 ||\n    status === 504 ||\n    /timeout|timed out|etimedout/.test(m)\n  ) {\n    return 'timeout';\n  }\n\n  if (\n    node.includes('postgres') ||\n    node.includes('database') ||\n    /\\bsqlstate\\b/.test(m)\n  ) {\n    return 'database';\n  }\n\n  if (\n    /enotfound|econnreset|econnrefused|eai_again|socket hang up|network error/.test(m)\n  ) {\n    return 'network';\n  }\n\n  if (\n    status !== null &&\n    status >= 500 &&\n    status <= 599\n  ) {\n    return 'github_server';\n  }\n\n  if (\n    status === 400 ||\n    status === 422 ||\n    /validation|invalid payload|required field/.test(m)\n  ) {\n    return 'validation';\n  }\n\n  return 'unexpected';\n}\n\n\n// ----------------------------------------------------\n// Extrair somente dados conhecidos\n// ----------------------------------------------------\n\nconst rawMessage =\n  asString(err.message) ||\n  asString(err.description) ||\n  'Unhandled workflow error';\n\nconst safeEnvelope = parseSafeEnvelope(rawMessage);\n\nconst nodeName =\n  asString(safeEnvelope.node_name) ||\n  asString(execution.lastNodeExecuted) ||\n  asString(err.node?.name) ||\n  asString(err.nodeName) ||\n  null;\n\nconst httpStatus = normalizeStatus(\n  safeEnvelope.http_status,\n  safeEnvelope.httpStatus,\n  err.httpCode,\n  err.statusCode,\n  err.status,\n  err.context?.httpCode,\n  err.context?.statusCode\n);\n\n\n// ----------------------------------------------------\n// GitHub Request ID\n//\n// Lemos somente o header explicitamente permitido.\n// Nunca copiamos o objeto headers completo.\n// ----------------------------------------------------\n\nconst responseHeaders =\n  err.response?.headers ??\n  err.context?.response?.headers ??\n  err.context?.headers ??\n  {};\n\nconst githubRequestId =\n  safeEnvelope.github_request_id ??\n  safeEnvelope.githubRequestId ??\n  err.context?.github_request_id ??\n  err.context?.githubRequestId ??\n  responseHeaders?.['x-github-request-id'] ??\n  responseHeaders?.['X-GitHub-Request-Id'] ??\n  null;\n\n\n// ----------------------------------------------------\n// Correlação\n// ----------------------------------------------------\n\nconst runId =\n  safeEnvelope.run_id ??\n  safeEnvelope.runId ??\n  err.context?.run_id ??\n  err.context?.runId ??\n  null;\n\nconst stage =\n  safeEnvelope.stage ??\n  err.context?.stage ??\n  nodeName ??\n  'unknown';\n\n\n// ----------------------------------------------------\n// Categoria\n// ----------------------------------------------------\n\nconst category = classifyError({\n  explicitCategory:\n    safeEnvelope.category ??\n    err.context?.category,\n  message: safeEnvelope.message ?? rawMessage,\n  status: httpStatus,\n  nodeName,\n});\n\n\n// ----------------------------------------------------\n// Tentativa\n// ----------------------------------------------------\n\nlet attempt = Number(\n  safeEnvelope.attempt ??\n  err.context?.attempt ??\n  0\n);\n\nif (!Number.isInteger(attempt) || attempt < 0) {\n  attempt = 0;\n}\n\n\n// ----------------------------------------------------\n// Retryable\n// ----------------------------------------------------\n\nconst explicitRetryable = normalizeBoolean(\n  safeEnvelope.retryable ??\n  err.context?.retryable\n);\n\nconst RETRYABLE_DEFAULTS = {\n  authentication: false,\n  authorization: false,\n  rate_limit: true,\n  timeout: true,\n  network: true,\n  github_server: true,\n  database: true,\n  validation: false,\n  schema: false,\n  page_limit: false,\n  concurrency: true,\n  unexpected: false,\n};\n\nconst retryable =\n  explicitRetryable ??\n  RETRYABLE_DEFAULTS[category] ??\n  false;\n\nreturn [\n  {\n    json: {\n      run_id: runId,\n\n      workflow_name:\n        asString(workflow.name) || 'unknown',\n\n      execution_id:\n        asString(execution.id) || null,\n\n      node_name: nodeName,\n\n      stage,\n\n      http_status: httpStatus,\n\n      github_request_id:\n        githubRequestId !== null\n          ? asString(githubRequestId)\n          : null,\n\n      category,\n\n      attempt,\n\n      retryable,\n\n      // Já fazemos uma primeira sanitização aqui.\n      // O próximo node faz a sanitização definitiva.\n      message_candidate: basicRedact(\n        safeEnvelope.message ?? rawMessage\n      ).slice(0, 1200),\n    },\n  },\n];"
+        }
+      },
+      {
+        "id": "906b7912-93d4-45a1-ad43-2df3db2fd1cb",
+        "name": "Has Run ID?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          160,
+          -96
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "cb0be96b-aa02-400f-a0be-0b69bcb0d2fe",
+                "leftValue": "={{ Number.isInteger($json.run_id) && $json.run_id > 0 }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "0c9b5dca-d4da-45d6-ab52-8c3932570c41",
+        "name": "Insert sync_errors",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "retryOnFail": true,
+        "onError": "continueErrorOutput",
+        "position": [
+          416,
+          -192
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "INSERT INTO public.sync_errors (\n    run_id,\n    workflow_name,\n    workflow_execution_id,\n    stage,\n    node_name,\n    category,\n    http_status,\n    github_request_id,\n    attempt,\n    retryable,\n    safe_message\n)\nVALUES (\n    ($1::jsonb ->> 'run_id')::BIGINT,\n    $1::jsonb ->> 'workflow_name',\n    $1::jsonb ->> 'workflow_execution_id',\n    $1::jsonb ->> 'stage',\n    $1::jsonb ->> 'node_name',\n    $1::jsonb ->> 'category',\n    NULLIF($1::jsonb ->> 'http_status', '')::INTEGER,\n    $1::jsonb ->> 'github_request_id',\n    NULLIF($1::jsonb ->> 'attempt', '')::INTEGER,\n    COALESCE(\n        NULLIF($1::jsonb ->> 'retryable', '')::BOOLEAN,\n        false\n    ),\n    $1::jsonb ->> 'safe_message'\n)\nRETURNING\n    id,\n    run_id,\n    occurred_at,\n    workflow_execution_id;",
+          "options": {
+            "queryReplacement": "={{ JSON.stringify($json) }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+            "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+          }
+        }
+      },
+      {
+        "id": "8ee72290-69f2-4a14-b5b1-1e4f0f0d132e",
+        "name": "Keep N8N Execution Evidence",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.5,
+        "position": [
+          672,
+          -64
+        ],
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "adfe1cf7-9a70-4ef3-91af-2abaa1176696",
+                "name": "persisted",
+                "value": false,
+                "type": "boolean"
+              },
+              {
+                "id": "8d322096-5c28-4906-9299-fb24aacd3b73",
+                "name": "evidence",
+                "value": "n8n_execution",
+                "type": "string"
+              },
+              {
+                "id": "eb5d2eb9-ec86-4b4c-a89d-af5e99781399",
+                "name": "original_execution_id",
+                "value": "={{ $('Sanitize Error').item.json.execution_id }}",
+                "type": "string"
+              },
+              {
+                "id": "ad8191aa-f06e-43f0-b1ce-179c8c61d9a7",
+                "name": "reason",
+                "value": "persistence_unavailable_or_missing_run_id",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "925ffff9-b949-4cbf-b0e5-b59f6b738610",
+        "name": "Sanitize Error",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -64,
+          -112
+        ],
+        "parameters": {
+          "jsCode": "const input = $input.first()?.json ?? {};\n\nconst ALLOWED_CATEGORIES = new Set([\n  'authentication',\n  'authorization',\n  'rate_limit',\n  'timeout',\n  'network',\n  'github_server',\n  'database',\n  'validation',\n  'schema',\n  'page_limit',\n  'concurrency',\n  'unexpected',\n]);\n\nfunction sanitizeText(value, maxLength = 500) {\n  if (value === null || value === undefined) {\n    return null;\n  }\n\n  let text = String(value);\n\n  // Connection strings.\n  text = text.replace(\n    /\\b(?:postgres(?:ql)?|mysql|mariadb):\\/\\/[^\\s]+/gi,\n    '[REDACTED_DB_URL]'\n  );\n\n  // Authorization.\n  text = text.replace(\n    /\\b(Bearer|Basic)\\s+[A-Za-z0-9._~+\\/=-]+/gi,\n    '$1 [REDACTED]'\n  );\n\n  // GitHub tokens.\n  text = text.replace(\n    /\\b(?:github_pat_|gh[pousr]_)[A-Za-z0-9_]{10,}/gi,\n    '[REDACTED_GITHUB_TOKEN]'\n  );\n\n  // JWT.\n  text = text.replace(\n    /\\b[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\b/g,\n    '[REDACTED_JWT]'\n  );\n\n  // JSON secrets.\n  text = text.replace(\n    /(\"(?:authorization|token|password|passwd|pwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token)\"\\s*:\\s*\")[^\"]*(\")/gi,\n    '$1[REDACTED]$2'\n  );\n\n  // key=value secrets.\n  text = text.replace(\n    /\\b(authorization|token|password|passwd|pwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token)\\b\\s*[:=]\\s*[\"']?[^,\\s;}\"']+/gi,\n    '$1=[REDACTED]'\n  );\n\n  // Segredos em query string.\n  text = text.replace(\n    /([?&](?:token|access_token|api_key|apikey|secret|password)=)[^&\\s]+/gi,\n    '$1[REDACTED]'\n  );\n\n  // Evitar log multiline.\n  text = text\n    .replace(/[\\r\\n\\t]+/g, ' ')\n    .replace(/\\s{2,}/g, ' ')\n    .trim();\n\n  return text.slice(0, maxLength);\n}\n\nfunction sanitizeIdentifier(value, maxLength = 128) {\n  if (\n    value === null ||\n    value === undefined ||\n    value === ''\n  ) {\n    return null;\n  }\n\n  return sanitizeText(value, maxLength);\n}\n\nlet httpStatus = Number(input.http_status);\n\nif (\n  !Number.isInteger(httpStatus) ||\n  httpStatus < 100 ||\n  httpStatus > 599\n) {\n  httpStatus = null;\n}\n\nlet attempt = Number(input.attempt);\n\nif (!Number.isInteger(attempt) || attempt < 0) {\n  attempt = 0;\n}\n\nconst category =\n  ALLOWED_CATEGORIES.has(input.category)\n    ? input.category\n    : 'unexpected';\n\n\n// ----------------------------------------------------\n// WHITELIST FINAL\n//\n// Tudo que não estiver declarado aqui desaparece.\n// ----------------------------------------------------\n\nlet runId = Number(input.run_id);\n\nif (\n  !Number.isSafeInteger(runId) ||\n  runId <= 0\n) {\n  runId = null;\n}\n\nreturn [\n  {\n    json: {\n      run_id: runId,\n\n      workflow_name:\n        sanitizeText(\n          input.workflow_name ?? 'unknown',\n          160\n        ),\n\n      workflow_execution_id:\n        sanitizeIdentifier(\n          input.execution_id ??\n          input.workflow_execution_id,\n          64\n        ),\n\n      stage:\n        sanitizeText(\n          input.stage ?? 'unknown',\n          100\n        ),\n\n      node_name:\n        sanitizeText(\n          input.node_name,\n          160\n        ),\n\n      category,\n\n      http_status: httpStatus,\n\n      github_request_id:\n        sanitizeIdentifier(\n          input.github_request_id,\n          128\n        ),\n\n      attempt,\n\n      retryable:\n        input.retryable === true,\n\n      safe_message:\n        sanitizeText(\n          input.message_candidate ??\n          input.safe_message ??\n          'Unhandled workflow error',\n          600\n        ),\n    },\n  },\n];"
+        }
+      },
+      {
+        "id": "975571e1-efbd-4aab-b90e-ab4af50a1db3",
+        "name": "Persisted",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.5,
+        "position": [
+          640,
+          -256
+        ],
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "75af8f15-490e-4c8b-81de-957828be0ae8",
+                "name": "persisted",
+                "value": true,
+                "type": "boolean"
+              },
+              {
+                "id": "b6b110d2-6b5e-4805-a6dc-9b5f78e85286",
+                "name": "error_id",
+                "value": "={{ $json.id }}",
+                "type": "string"
+              },
+              {
+                "id": "c4d51da3-004e-44bb-99dd-1563b534cab2",
+                "name": "run_id",
+                "value": "={{ $json.run_id }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        }
+      }
+    ],
+    "connections": {
+      "Error Trigger": {
+        "main": [
+          [
+            {
+              "node": "Normalize Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Error": {
+        "main": [
+          [
+            {
+              "node": "Sanitize Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Run ID?": {
+        "main": [
+          [
+            {
+              "node": "Insert sync_errors",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Keep N8N Execution Evidence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Insert sync_errors": {
+        "main": [
+          [
+            {
+              "node": "Persisted",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Keep N8N Execution Evidence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Sanitize Error": {
+        "main": [
+          [
+            {
+              "node": "Has Run ID?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Douglas E Silva",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "createdAt": "2026-10-10T16:03:47.307Z",
+    "updatedAt": "2026-10-10T16:03:47.307Z",
+    "workflowPublishHistory": [
+      {
+        "id": 16,
+        "workflowId": "i7QXkiz6EXgXtYnH",
+        "versionId": "c3672b71-d9ad-4e96-ae33-36761d1bf9a8",
+        "event": "activated",
+        "userId": "97cb7e86-2340-4ee9-97a6-b4951ec9a5cf",
+        "createdAt": "2026-10-10T16:03:47.406Z"
+      }
+    ]
+  }
+}

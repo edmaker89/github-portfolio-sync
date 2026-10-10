@@ -1,0 +1,1116 @@
+{
+  "id": "dEgxD41QSk0cCoXr",
+  "name": "Ensure Database Schema",
+  "description": "",
+  "active": true,
+  "activeVersionId": "6267341a-2f6b-4997-9875-8ca2af564780",
+  "createdAt": "2026-09-29T00:01:44.067Z",
+  "updatedAt": "2026-10-07T09:58:00.324Z",
+  "isArchived": false,
+  "versionId": "6267341a-2f6b-4997-9875-8ca2af564780",
+  "versionCounter": 170,
+  "sourceWorkflowId": null,
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8066e4a4-eb51-4d1c-a4de-7ec5db7b32a5",
+              "name": "expected_version",
+              "value": "={{ $json.expected_version }}",
+              "type": "number"
+            },
+            {
+              "id": "34373329-54aa-4b2b-b793-6106a69e5ab7",
+              "name": "schema_name",
+              "value": "public",
+              "type": "string"
+            },
+            {
+              "id": "fe9671c9-948f-4af0-95f6-a7af8af8b80f",
+              "name": "migration_table",
+              "value": "schema_migration",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -368,
+        -48
+      ],
+      "id": "032bc188-1df6-424d-9127-9c8a2f4592c5",
+      "name": "Set Expected Version"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TEMP TABLE IF NOT EXISTS _n8n_schema_inspection (\n    migration_table_exists       BOOLEAN NOT NULL,\n    migration_table_shape_valid  BOOLEAN NOT NULL,\n    migration_rows               BIGINT NOT NULL,\n    current_version              INTEGER,\n    current_description          TEXT,\n    current_checksum             TEXT,\n    current_applied_at           TIMESTAMPTZ\n);\n\nTRUNCATE TABLE _n8n_schema_inspection;\n\nDO $$\nDECLARE\n    v_table_exists BOOLEAN := FALSE;\n    v_shape_valid BOOLEAN := FALSE;\n    v_rows BIGINT := 0;\n\n    v_version INTEGER;\n    v_description TEXT;\n    v_checksum TEXT;\n    v_applied_at TIMESTAMPTZ;\nBEGIN\n\n    -- Verifica se a tabela existe\n    v_table_exists :=\n        to_regclass('public.schema_migrations') IS NOT NULL;\n\n    IF v_table_exists THEN\n\n        -- Verifica se a estrutura mínima da tabela é compatível\n        SELECT COUNT(*) = 4\n        INTO v_shape_valid\n        FROM information_schema.columns c\n        WHERE c.table_schema = 'public'\n          AND c.table_name = 'schema_migrations'\n          AND (\n                (\n                    c.column_name = 'version'\n                    AND c.data_type = 'integer'\n                    AND c.is_nullable = 'NO'\n                )\n                OR\n                (\n                    c.column_name = 'description'\n                    AND c.data_type = 'text'\n                    AND c.is_nullable = 'NO'\n                )\n                OR\n                (\n                    c.column_name = 'checksum'\n                    AND c.data_type = 'text'\n                    AND c.is_nullable = 'NO'\n                )\n                OR\n                (\n                    c.column_name = 'applied_at'\n                    AND c.data_type = 'timestamp with time zone'\n                    AND c.is_nullable = 'NO'\n                )\n          );\n\n        IF v_shape_valid THEN\n\n            EXECUTE\n                'SELECT COUNT(*)\n                   FROM public.schema_migrations'\n            INTO v_rows;\n\n            IF v_rows > 0 THEN\n\n                EXECUTE\n                    'SELECT\n                         version,\n                         description,\n                         checksum,\n                         applied_at\n                     FROM public.schema_migrations\n                     ORDER BY version DESC\n                     LIMIT 1'\n                INTO\n                    v_version,\n                    v_description,\n                    v_checksum,\n                    v_applied_at;\n\n            END IF;\n\n        END IF;\n\n    END IF;\n\n    INSERT INTO _n8n_schema_inspection (\n        migration_table_exists,\n        migration_table_shape_valid,\n        migration_rows,\n        current_version,\n        current_description,\n        current_checksum,\n        current_applied_at\n    )\n    VALUES (\n        v_table_exists,\n        v_shape_valid,\n        v_rows,\n        v_version,\n        v_description,\n        v_checksum,\n        v_applied_at\n    );\n\nEND $$;\n\nSELECT *\nFROM _n8n_schema_inspection;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -112,
+        -48
+      ],
+      "id": "eac8a0e8-58fc-4145-80cc-63ca8f38e421",
+      "name": "Inspect Schema State",
+      "alwaysOutputData": false,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "expected_version"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        -48
+      ],
+      "id": "cf37bf51-6309-4cc0-8b70-5c453520c1a1",
+      "name": "Execute subworkflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inspection = $input.first().json;\n\nconst config = $('Set Expected Version').first().json;\n\nconst expectedVersion = Number(config.expected_version);\n\nconst tableExists =\n  inspection.migration_table_exists === true;\n\nconst shapeValid =\n  inspection.migration_table_shape_valid === true;\n\nconst migrationRows =\n  Number(inspection.migration_rows ?? 0);\n\nconst currentVersion =\n  inspection.current_version !== null &&\n  inspection.current_version !== undefined\n    ? Number(inspection.current_version)\n    : null;\n\nlet schemaState;\nlet reason;\n\n// Banco novo\nif (!tableExists) {\n\n  schemaState = 'absent';\n  reason = 'schema_migrations table does not exist';\n\n}\n\n// Existe algo chamado schema_migrations,\n// mas não é a estrutura que esperamos\nelse if (!shapeValid) {\n\n  schemaState = 'unsupported';\n  reason = 'schema_migrations exists but has an unsupported structure';\n\n}\n\n// Tabela existe porém vazia.\n// Não considero isso \"banco novo\" porque pode ser bootstrap incompleto.\nelse if (migrationRows === 0 || currentVersion === null) {\n\n  schemaState = 'unsupported';\n  reason = 'schema_migrations exists but contains no migration records';\n\n}\n\n// Exatamente a versão suportada\nelse if (currentVersion === expectedVersion) {\n\n  schemaState = 'current';\n  reason = `schema version ${currentVersion} matches expected version ${expectedVersion}`;\n\n}\n\n// Banco mais antigo\nelse if (currentVersion < expectedVersion) {\n\n  schemaState = 'drift';\n  reason = `schema version ${currentVersion} is behind expected version ${expectedVersion}`;\n\n}\n\n// Banco mais novo que o workflow\nelse {\n\n  schemaState = 'unsupported';\n  reason = `schema version ${currentVersion} is newer than supported version ${expectedVersion}`;\n\n}\n\nreturn [\n  {\n    json: {\n      ...inspection,\n\n      expected_version: expectedVersion,\n\n      schema_state: schemaState,\n\n      reason\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        -48
+      ],
+      "id": "ead81a10-6a5e-46e8-8f06-5abc22c76420",
+      "name": "Classify Schema State"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.schema_state }}",
+                    "rightValue": "absent",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8d816a74-025d-46a3-91de-9ac83913cca4"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "absent"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a133b51f-629a-4e78-8bc4-ec12df85319e",
+                    "leftValue": "={{ $json.schema_state }}",
+                    "rightValue": "current",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "current"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "36085aa7-aa7c-4663-8dba-f1707a2c5527",
+                    "leftValue": "={{ $json.schema_state }}",
+                    "rightValue": "drift",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "drift"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "25168fff-3591-4800-bad3-db67c3badad0",
+                    "leftValue": "={{ $json.schema_state }}",
+                    "rightValue": "unsupported",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "unsupported"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        352,
+        -224
+      ],
+      "id": "c704c1d2-8059-4e49-a482-cf756d1b7d4b",
+      "name": "Switch Schema State"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "BEGIN;\n\n-- Evita dois workflows tentando inicializar o schema\n-- simultaneamente.\nSELECT pg_advisory_xact_lock(\n    hashtext('application-schema-bootstrap-v1')\n);\n\n\n-- =====================================================\n-- Migration control\n-- =====================================================\nCREATE TABLE IF NOT EXISTS public.schema_migrations (\n    version       INTEGER PRIMARY KEY,\n    description   TEXT NOT NULL,\n    checksum      TEXT NOT NULL,\n    applied_at    TIMESTAMPTZ NOT NULL DEFAULT now()\n);\n\n\n-- =====================================================\n-- SCHEMA V1\n-- =====================================================\n\n-- =====================================================\n-- 1. Tabela: sync_runs\n-- =====================================================\nCREATE TABLE IF NOT EXISTS public.sync_runs (\n    id                         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n    owner_login                TEXT NOT NULL,\n    status                     TEXT NOT NULL,\n    started_at                 TIMESTAMPTZ NOT NULL DEFAULT now(),\n    heartbeat_at               TIMESTAMPTZ NOT NULL DEFAULT now(),\n    finished_at                TIMESTAMPTZ,\n    pages_fetched              INTEGER NOT NULL DEFAULT 0,\n    records_received           INTEGER NOT NULL DEFAULT 0,\n    records_inserted           INTEGER NOT NULL DEFAULT 0,\n    records_updated            INTEGER NOT NULL DEFAULT 0,\n    records_deactivated        INTEGER NOT NULL DEFAULT 0,\n    rate_limit_limit           INTEGER,\n    rate_limit_remaining       INTEGER,\n    rate_limit_reset_at        TIMESTAMPTZ,\n    last_github_request_id     TEXT,\n    error_code                 TEXT,\n    error_message              TEXT,\n\n    CONSTRAINT chk_sync_runs_status CHECK (status IN ('running', 'succeeded', 'failed', 'skipped'))\n);\n\n-- Índice parcial único para impedir múltiplos runs ativos no mesmo owner\nCREATE UNIQUE INDEX IF NOT EXISTS idx_sync_runs_active_owner \n    ON public.sync_runs (owner_login) \n    WHERE status = 'running';\n\n\n-- =====================================================\n-- 2. Tabela: github_profiles\n-- =====================================================\nCREATE TABLE IF NOT EXISTS public.github_profiles (\n    github_user_id       BIGINT PRIMARY KEY,\n    login                TEXT NOT NULL,\n    name                 TEXT,\n    bio                  TEXT,\n    company              TEXT,\n    location             TEXT,\n    blog                 TEXT,\n    html_url             TEXT NOT NULL,\n    avatar_url           TEXT,\n    public_repos         INTEGER NOT NULL DEFAULT 0,\n    followers            INTEGER NOT NULL DEFAULT 0,\n    following            INTEGER NOT NULL DEFAULT 0,\n    github_created_at    TIMESTAMPTZ,\n    github_updated_at    TIMESTAMPTZ,\n    synced_at            TIMESTAMPTZ NOT NULL DEFAULT now()\n);\n\n-- Índice para busca insensível a maiúsculas/minúsculas por login\nCREATE INDEX IF NOT EXISTS idx_github_profiles_lower_login \n    ON public.github_profiles (lower(login));\n\n\n-- =====================================================\n-- 3. Tabela: github_repositories\n-- =====================================================\nCREATE TABLE IF NOT EXISTS public.github_repositories (\n    github_repo_id           BIGINT PRIMARY KEY,\n    owner_login              TEXT NOT NULL,\n    name                     TEXT NOT NULL,\n    full_name                TEXT NOT NULL,\n    description              TEXT,\n    html_url                 TEXT NOT NULL,\n    language                 TEXT,\n    topics                   JSONB NOT NULL DEFAULT '[]'::jsonb,\n    visibility               TEXT NOT NULL,\n    default_branch           TEXT,\n    fork                     BOOLEAN NOT NULL DEFAULT false,\n    archived                 BOOLEAN NOT NULL DEFAULT false,\n    disabled                 BOOLEAN NOT NULL DEFAULT false,\n    stargazers_count         INTEGER NOT NULL DEFAULT 0,\n    watchers_count           INTEGER NOT NULL DEFAULT 0,\n    forks_count              INTEGER NOT NULL DEFAULT 0,\n    open_issues_count        INTEGER NOT NULL DEFAULT 0,\n    size                     INTEGER NOT NULL DEFAULT 0,\n    github_created_at        TIMESTAMPTZ,\n    github_updated_at        TIMESTAMPTZ,\n    github_pushed_at         TIMESTAMPTZ,\n    first_seen_at            TIMESTAMPTZ NOT NULL DEFAULT now(),\n    last_seen_at             TIMESTAMPTZ NOT NULL DEFAULT now(),\n    last_seen_run_id         BIGINT,\n    is_active                BOOLEAN NOT NULL DEFAULT true,\n\n    CONSTRAINT fk_github_repositories_sync_runs \n        FOREIGN KEY (last_seen_run_id) \n        REFERENCES public.sync_runs (id) \n        ON DELETE SET NULL\n);\n\n-- Índices de consulta para repositórios\nCREATE INDEX IF NOT EXISTS idx_github_repositories_owner_login \n    ON public.github_repositories (owner_login);\n\nCREATE INDEX IF NOT EXISTS idx_github_repositories_owner_is_active \n    ON public.github_repositories (owner_login, is_active);\n\nCREATE INDEX IF NOT EXISTS idx_github_repositories_github_updated_at \n    ON public.github_repositories (github_updated_at);\n\nCREATE INDEX IF NOT EXISTS idx_github_repositories_last_seen_run_id \n    ON public.github_repositories (last_seen_run_id);\n\n\n-- =====================================================\n-- 4. Tabela: sync_errors\n-- =====================================================\nCREATE TABLE IF NOT EXISTS public.sync_errors (\n    id                    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n    run_id                BIGINT,\n    occurred_at           TIMESTAMPTZ NOT NULL DEFAULT now(),\n    workflow_name         TEXT,\n    workflow_execution_id TEXT,\n    stage                 TEXT,\n    node_name             TEXT,\n    category              TEXT NOT NULL,\n    http_status           INTEGER,\n    github_request_id     TEXT,\n    attempt               INTEGER,\n    retryable             BOOLEAN NOT NULL DEFAULT false,\n    safe_message          TEXT,\n\n    CONSTRAINT fk_sync_errors_sync_runs \n        FOREIGN KEY (run_id) \n        REFERENCES public.sync_runs (id) \n        ON DELETE SET NULL\n);\n\n-- =====================================================\n-- Register migration\n-- =====================================================\n\nINSERT INTO public.schema_migrations (\n    version,\n    description,\n    checksum\n)\nVALUES (\n    1,\n    'Initial schema',\n    'schema-v1'\n)\nON CONFLICT (version) DO NOTHING;\n\nCOMMIT;\n\n\nSELECT\n    version,\n    description,\n    checksum,\n    applied_at\nFROM public.schema_migrations\nWHERE version = 1;",
+        "options": {
+          "largeNumbersOutput": "text"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        624,
+        -432
+      ],
+      "id": "85f5204e-dd85-4f53-8a3c-5731ecd8ddd5",
+      "name": "Create Schema V1",
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{\n  'Schema drift detected. Expected version '\n  + $json.expected_version\n  + ', but database is at version '\n  + $json.current_version\n  + '. '\n  + $json.reason\n}}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        608,
+        -128
+      ],
+      "id": "bf25c03a-3dbf-411c-b757-fa410ba16372",
+      "name": "Stop And Error - Schema Drift"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{\n  'Unsupported database schema. '\n  + $json.reason\n}}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        608,
+        48
+      ],
+      "id": "80e2d278-71bf-4986-9d35-1f857b1eb290",
+      "name": "Stop And Error - Unsupported Schema"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH required_columns AS (\n\n    SELECT *\n    FROM (\n        VALUES\n            (\n                'public',\n                'schema_migrations',\n                'version',\n                'integer',\n                'NO'\n            ),\n            (\n                'public',\n                'schema_migrations',\n                'description',\n                'text',\n                'NO'\n            ),\n            (\n                'public',\n                'schema_migrations',\n                'checksum',\n                'text',\n                'NO'\n            ),\n            (\n                'public',\n                'schema_migrations',\n                'applied_at',\n                'timestamp with time zone',\n                'NO'\n            )\n    ) AS r(\n        table_schema,\n        table_name,\n        column_name,\n        data_type,\n        is_nullable\n    )\n\n),\n\ncolumn_issues AS (\n\n    SELECT\n        format(\n            'Column %I.%I.%I is missing or incompatible',\n            r.table_schema,\n            r.table_name,\n            r.column_name\n        ) AS issue\n\n    FROM required_columns r\n\n    LEFT JOIN information_schema.columns c\n        ON c.table_schema = r.table_schema\n       AND c.table_name = r.table_name\n       AND c.column_name = r.column_name\n\n    WHERE\n        c.column_name IS NULL\n        OR c.data_type IS DISTINCT FROM r.data_type\n        OR c.is_nullable IS DISTINCT FROM r.is_nullable\n\n),\n\npk_issue AS (\n\n    SELECT\n        'schema_migrations.version is not the primary key'\n        AS issue\n\n    WHERE NOT EXISTS (\n\n        SELECT 1\n\n        FROM information_schema.table_constraints tc\n\n        JOIN information_schema.key_column_usage kcu\n          ON tc.constraint_name = kcu.constraint_name\n         AND tc.table_schema = kcu.table_schema\n         AND tc.table_name = kcu.table_name\n\n        WHERE tc.constraint_type = 'PRIMARY KEY'\n          AND tc.table_schema = 'public'\n          AND tc.table_name = 'schema_migrations'\n\n        GROUP BY tc.constraint_name\n\n        HAVING\n            COUNT(*) = 1\n            AND MAX(kcu.column_name) = 'version'\n    )\n\n),\n\nlatest_migration AS (\n\n    SELECT\n        version,\n        description,\n        checksum,\n        applied_at\n\n    FROM public.schema_migrations\n\n    ORDER BY version DESC\n\n    LIMIT 1\n\n),\n\nversion_issue AS (\n\n    SELECT\n        format(\n            'Expected schema version %s but found %s',\n            $1,\n            version\n        ) AS issue\n\n    FROM latest_migration\n\n    WHERE version <> $1\n\n),\n\nempty_migration_issue AS (\n\n    SELECT\n        'schema_migrations contains no migration records'\n        AS issue\n\n    WHERE NOT EXISTS (\n        SELECT 1\n        FROM latest_migration\n    )\n\n),\n\nissues AS (\n\n    SELECT issue FROM column_issues\n\n    UNION ALL\n\n    SELECT issue FROM pk_issue\n\n    UNION ALL\n\n    SELECT issue FROM version_issue\n\n    UNION ALL\n\n    SELECT issue FROM empty_migration_issue\n\n)\n\nSELECT\n\n    COUNT(*) = 0 AS schema_valid,\n\n    COALESCE(\n        jsonb_agg(issue ORDER BY issue),\n        '[]'::jsonb\n    ) AS issues,\n\n    (\n        SELECT version\n        FROM latest_migration\n    ) AS current_version,\n\n    $1::INTEGER AS expected_version\n\nFROM issues;",
+        "options": {
+          "queryReplacement": "={{ [   $('Set Expected Version').first().json.expected_version ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        800,
+        -256
+      ],
+      "id": "b9a4c241-f687-435d-b4f2-6816fd903523",
+      "name": "Validate Required Objects",
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6a0dfe9a-99e9-4fb4-a4b2-cba251730c25",
+              "leftValue": "={{ $json.schema_valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1008,
+        -256
+      ],
+      "id": "da232051-f67a-45e9-aac3-27dcf8b00097",
+      "name": "If Schema Valid?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{\n  'Database schema validation failed. Issues: '\n  + JSON.stringify($json.issues)\n}}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        -112
+      ],
+      "id": "c9ff020c-3628-487c-b660-6b11f403a469",
+      "name": "Stop And Error - Invalid Schema"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "11c32dfb-18e9-4da9-a442-5f5aaa521967",
+              "name": "ok",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "85419892-ac59-4673-a2c4-738a81c7688c",
+              "name": "schema_status",
+              "value": "ready",
+              "type": "string"
+            },
+            {
+              "id": "8db3469f-5801-44a0-b11b-5d2b4dfc9805",
+              "name": "expected_version",
+              "value": "={{ $('Set Expected Version').first().json.expected_version }}",
+              "type": "string"
+            },
+            {
+              "id": "6f5acfca-07fd-4a02-9abd-a416c66e074f",
+              "name": "current_version",
+              "value": "={{ $json.current_version }}",
+              "type": "string"
+            },
+            {
+              "id": "56cd7720-378e-4b53-b914-f50fa83cdb9b",
+              "name": "initial_state",
+              "value": "={{ $('Classify Schema State').first().json.schema_state }}",
+              "type": "string"
+            },
+            {
+              "id": "29da2844-b8c3-4d86-8a42-0be46ce0fadc",
+              "name": "schema_created",
+              "value": "={{ $('Classify Schema State').first().json.schema_state === 'absent' }}",
+              "type": "string"
+            },
+            {
+              "id": "91e12b20-533d-4039-b488-cd7d9173dead",
+              "name": "schema_valid",
+              "value": "={{ $json.schema_valid }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1248,
+        -272
+      ],
+      "id": "5da60f4b-2e10-4f16-9790-1066ff13e3dd",
+      "name": "Return Schema Result"
+    },
+    {
+      "parameters": {
+        "content": "## Schema Guard\n\nEste workflow valida e controla a versão do schema PostgreSQL antes da execução da aplicação.\n\n### Fluxo\n`Trigger → Expected Version → Inspect → Classify → Switch → Validate → Return`\n\n### Estados\n- `absent` → banco novo: cria o **Schema V1**\n- `current` → versão correta: valida objetos obrigatórios\n- `drift` → banco está atrás da versão esperada\n- `unsupported` → banco está incompatível ou mais novo que o workflow\n\n### Evolução de versão\nNa **V1**, `absent` cria todo o schema inicial.\n\nQuando surgir a **V2**:\n- `expected_version` passa para `2`\n- banco em V1 será classificado como `drift`\n- o branch `drift` deverá executar a migration incremental `V1 → V2`\n- ao final da migration, registrar `version = 2` em `schema_migrations`\n- nunca recriar o banco para atualizar versão\n- nunca fazer downgrade automático\n\nToda criação/migration deve finalizar em:\n\n`Validate Required Objects → Is Schema Valid? → Return Schema Result`\n\nA versão registrada indica a migration aplicada; a validação confirma que o schema físico continua íntegro.",
+        "height": 576,
+        "width": 816,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -640,
+        -672
+      ],
+      "typeVersion": 1,
+      "id": "5d2685fd-6f90-4eae-9655-6fe860051c51",
+      "name": "Sticky Note1"
+    }
+  ],
+  "connections": {
+    "Set Expected Version": {
+      "main": [
+        [
+          {
+            "node": "Inspect Schema State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute subworkflow": {
+      "main": [
+        [
+          {
+            "node": "Set Expected Version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inspect Schema State": {
+      "main": [
+        [
+          {
+            "node": "Classify Schema State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Schema State": {
+      "main": [
+        [
+          {
+            "node": "Switch Schema State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Schema State": {
+      "main": [
+        [
+          {
+            "node": "Create Schema V1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate Required Objects",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop And Error - Schema Drift",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop And Error - Unsupported Schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Schema V1": {
+      "main": [
+        [
+          {
+            "node": "Validate Required Objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Required Objects": {
+      "main": [
+        [
+          {
+            "node": "If Schema Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Schema Valid?": {
+      "main": [
+        [
+          {
+            "node": "Return Schema Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop And Error - Invalid Schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "i7QXkiz6EXgXtYnH",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "69SOeFGXGcDOEsy6",
+      "name": "github-portfolio-sync",
+      "createdAt": "2026-09-28T23:17:52.310Z",
+      "updatedAt": "2026-09-28T23:17:52.310Z"
+    }
+  ],
+  "shared": [],
+  "activeVersion": {
+    "versionId": "6267341a-2f6b-4997-9875-8ca2af564780",
+    "workflowId": "dEgxD41QSk0cCoXr",
+    "nodes": [
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "8066e4a4-eb51-4d1c-a4de-7ec5db7b32a5",
+                "name": "expected_version",
+                "value": "={{ $json.expected_version }}",
+                "type": "number"
+              },
+              {
+                "id": "34373329-54aa-4b2b-b793-6106a69e5ab7",
+                "name": "schema_name",
+                "value": "public",
+                "type": "string"
+              },
+              {
+                "id": "fe9671c9-948f-4af0-95f6-a7af8af8b80f",
+                "name": "migration_table",
+                "value": "schema_migration",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.5,
+        "position": [
+          -368,
+          -48
+        ],
+        "id": "032bc188-1df6-424d-9127-9c8a2f4592c5",
+        "name": "Set Expected Version"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "CREATE TEMP TABLE IF NOT EXISTS _n8n_schema_inspection (\n    migration_table_exists       BOOLEAN NOT NULL,\n    migration_table_shape_valid  BOOLEAN NOT NULL,\n    migration_rows               BIGINT NOT NULL,\n    current_version              INTEGER,\n    current_description          TEXT,\n    current_checksum             TEXT,\n    current_applied_at           TIMESTAMPTZ\n);\n\nTRUNCATE TABLE _n8n_schema_inspection;\n\nDO $$\nDECLARE\n    v_table_exists BOOLEAN := FALSE;\n    v_shape_valid BOOLEAN := FALSE;\n    v_rows BIGINT := 0;\n\n    v_version INTEGER;\n    v_description TEXT;\n    v_checksum TEXT;\n    v_applied_at TIMESTAMPTZ;\nBEGIN\n\n    -- Verifica se a tabela existe\n    v_table_exists :=\n        to_regclass('public.schema_migrations') IS NOT NULL;\n\n    IF v_table_exists THEN\n\n        -- Verifica se a estrutura mínima da tabela é compatível\n        SELECT COUNT(*) = 4\n        INTO v_shape_valid\n        FROM information_schema.columns c\n        WHERE c.table_schema = 'public'\n          AND c.table_name = 'schema_migrations'\n          AND (\n                (\n                    c.column_name = 'version'\n                    AND c.data_type = 'integer'\n                    AND c.is_nullable = 'NO'\n                )\n                OR\n                (\n                    c.column_name = 'description'\n                    AND c.data_type = 'text'\n                    AND c.is_nullable = 'NO'\n                )\n                OR\n                (\n                    c.column_name = 'checksum'\n                    AND c.data_type = 'text'\n                    AND c.is_nullable = 'NO'\n                )\n                OR\n                (\n                    c.column_name = 'applied_at'\n                    AND c.data_type = 'timestamp with time zone'\n                    AND c.is_nullable = 'NO'\n                )\n          );\n\n        IF v_shape_valid THEN\n\n            EXECUTE\n                'SELECT COUNT(*)\n                   FROM public.schema_migrations'\n            INTO v_rows;\n\n            IF v_rows > 0 THEN\n\n                EXECUTE\n                    'SELECT\n                         version,\n                         description,\n                         checksum,\n                         applied_at\n                     FROM public.schema_migrations\n                     ORDER BY version DESC\n                     LIMIT 1'\n                INTO\n                    v_version,\n                    v_description,\n                    v_checksum,\n                    v_applied_at;\n\n            END IF;\n\n        END IF;\n\n    END IF;\n\n    INSERT INTO _n8n_schema_inspection (\n        migration_table_exists,\n        migration_table_shape_valid,\n        migration_rows,\n        current_version,\n        current_description,\n        current_checksum,\n        current_applied_at\n    )\n    VALUES (\n        v_table_exists,\n        v_shape_valid,\n        v_rows,\n        v_version,\n        v_description,\n        v_checksum,\n        v_applied_at\n    );\n\nEND $$;\n\nSELECT *\nFROM _n8n_schema_inspection;",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          -112,
+          -48
+        ],
+        "id": "eac8a0e8-58fc-4145-80cc-63ca8f38e421",
+        "name": "Inspect Schema State",
+        "alwaysOutputData": false,
+        "retryOnFail": true,
+        "waitBetweenTries": 2000,
+        "credentials": {
+          "postgres": {
+            "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+            "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "expected_version"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          -640,
+          -48
+        ],
+        "id": "cf37bf51-6309-4cc0-8b70-5c453520c1a1",
+        "name": "Execute subworkflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "const inspection = $input.first().json;\n\nconst config = $('Set Expected Version').first().json;\n\nconst expectedVersion = Number(config.expected_version);\n\nconst tableExists =\n  inspection.migration_table_exists === true;\n\nconst shapeValid =\n  inspection.migration_table_shape_valid === true;\n\nconst migrationRows =\n  Number(inspection.migration_rows ?? 0);\n\nconst currentVersion =\n  inspection.current_version !== null &&\n  inspection.current_version !== undefined\n    ? Number(inspection.current_version)\n    : null;\n\nlet schemaState;\nlet reason;\n\n// Banco novo\nif (!tableExists) {\n\n  schemaState = 'absent';\n  reason = 'schema_migrations table does not exist';\n\n}\n\n// Existe algo chamado schema_migrations,\n// mas não é a estrutura que esperamos\nelse if (!shapeValid) {\n\n  schemaState = 'unsupported';\n  reason = 'schema_migrations exists but has an unsupported structure';\n\n}\n\n// Tabela existe porém vazia.\n// Não considero isso \"banco novo\" porque pode ser bootstrap incompleto.\nelse if (migrationRows === 0 || currentVersion === null) {\n\n  schemaState = 'unsupported';\n  reason = 'schema_migrations exists but contains no migration records';\n\n}\n\n// Exatamente a versão suportada\nelse if (currentVersion === expectedVersion) {\n\n  schemaState = 'current';\n  reason = `schema version ${currentVersion} matches expected version ${expectedVersion}`;\n\n}\n\n// Banco mais antigo\nelse if (currentVersion < expectedVersion) {\n\n  schemaState = 'drift';\n  reason = `schema version ${currentVersion} is behind expected version ${expectedVersion}`;\n\n}\n\n// Banco mais novo que o workflow\nelse {\n\n  schemaState = 'unsupported';\n  reason = `schema version ${currentVersion} is newer than supported version ${expectedVersion}`;\n\n}\n\nreturn [\n  {\n    json: {\n      ...inspection,\n\n      expected_version: expectedVersion,\n\n      schema_state: schemaState,\n\n      reason\n    }\n  }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          128,
+          -48
+        ],
+        "id": "ead81a10-6a5e-46e8-8f06-5abc22c76420",
+        "name": "Classify Schema State"
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.schema_state }}",
+                      "rightValue": "absent",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "id": "8d816a74-025d-46a3-91de-9ac83913cca4"
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "absent"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "a133b51f-629a-4e78-8bc4-ec12df85319e",
+                      "leftValue": "={{ $json.schema_state }}",
+                      "rightValue": "current",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "current"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "36085aa7-aa7c-4663-8dba-f1707a2c5527",
+                      "leftValue": "={{ $json.schema_state }}",
+                      "rightValue": "drift",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "drift"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "25168fff-3591-4800-bad3-db67c3badad0",
+                      "leftValue": "={{ $json.schema_state }}",
+                      "rightValue": "unsupported",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "unsupported"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.4,
+        "position": [
+          352,
+          -224
+        ],
+        "id": "c704c1d2-8059-4e49-a482-cf756d1b7d4b",
+        "name": "Switch Schema State"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "BEGIN;\n\n-- Evita dois workflows tentando inicializar o schema\n-- simultaneamente.\nSELECT pg_advisory_xact_lock(\n    hashtext('application-schema-bootstrap-v1')\n);\n\n\n-- =====================================================\n-- Migration control\n-- =====================================================\nCREATE TABLE IF NOT EXISTS public.schema_migrations (\n    version       INTEGER PRIMARY KEY,\n    description   TEXT NOT NULL,\n    checksum      TEXT NOT NULL,\n    applied_at    TIMESTAMPTZ NOT NULL DEFAULT now()\n);\n\n\n-- =====================================================\n-- SCHEMA V1\n-- =====================================================\n\n-- =====================================================\n-- 1. Tabela: sync_runs\n-- =====================================================\nCREATE TABLE IF NOT EXISTS public.sync_runs (\n    id                         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n    owner_login                TEXT NOT NULL,\n    status                     TEXT NOT NULL,\n    started_at                 TIMESTAMPTZ NOT NULL DEFAULT now(),\n    heartbeat_at               TIMESTAMPTZ NOT NULL DEFAULT now(),\n    finished_at                TIMESTAMPTZ,\n    pages_fetched              INTEGER NOT NULL DEFAULT 0,\n    records_received           INTEGER NOT NULL DEFAULT 0,\n    records_inserted           INTEGER NOT NULL DEFAULT 0,\n    records_updated            INTEGER NOT NULL DEFAULT 0,\n    records_deactivated        INTEGER NOT NULL DEFAULT 0,\n    rate_limit_limit           INTEGER,\n    rate_limit_remaining       INTEGER,\n    rate_limit_reset_at        TIMESTAMPTZ,\n    last_github_request_id     TEXT,\n    error_code                 TEXT,\n    error_message              TEXT,\n\n    CONSTRAINT chk_sync_runs_status CHECK (status IN ('running', 'succeeded', 'failed', 'skipped'))\n);\n\n-- Índice parcial único para impedir múltiplos runs ativos no mesmo owner\nCREATE UNIQUE INDEX IF NOT EXISTS idx_sync_runs_active_owner \n    ON public.sync_runs (owner_login) \n    WHERE status = 'running';\n\n\n-- =====================================================\n-- 2. Tabela: github_profiles\n-- =====================================================\nCREATE TABLE IF NOT EXISTS public.github_profiles (\n    github_user_id       BIGINT PRIMARY KEY,\n    login                TEXT NOT NULL,\n    name                 TEXT,\n    bio                  TEXT,\n    company              TEXT,\n    location             TEXT,\n    blog                 TEXT,\n    html_url             TEXT NOT NULL,\n    avatar_url           TEXT,\n    public_repos         INTEGER NOT NULL DEFAULT 0,\n    followers            INTEGER NOT NULL DEFAULT 0,\n    following            INTEGER NOT NULL DEFAULT 0,\n    github_created_at    TIMESTAMPTZ,\n    github_updated_at    TIMESTAMPTZ,\n    synced_at            TIMESTAMPTZ NOT NULL DEFAULT now()\n);\n\n-- Índice para busca insensível a maiúsculas/minúsculas por login\nCREATE INDEX IF NOT EXISTS idx_github_profiles_lower_login \n    ON public.github_profiles (lower(login));\n\n\n-- =====================================================\n-- 3. Tabela: github_repositories\n-- =====================================================\nCREATE TABLE IF NOT EXISTS public.github_repositories (\n    github_repo_id           BIGINT PRIMARY KEY,\n    owner_login              TEXT NOT NULL,\n    name                     TEXT NOT NULL,\n    full_name                TEXT NOT NULL,\n    description              TEXT,\n    html_url                 TEXT NOT NULL,\n    language                 TEXT,\n    topics                   JSONB NOT NULL DEFAULT '[]'::jsonb,\n    visibility               TEXT NOT NULL,\n    default_branch           TEXT,\n    fork                     BOOLEAN NOT NULL DEFAULT false,\n    archived                 BOOLEAN NOT NULL DEFAULT false,\n    disabled                 BOOLEAN NOT NULL DEFAULT false,\n    stargazers_count         INTEGER NOT NULL DEFAULT 0,\n    watchers_count           INTEGER NOT NULL DEFAULT 0,\n    forks_count              INTEGER NOT NULL DEFAULT 0,\n    open_issues_count        INTEGER NOT NULL DEFAULT 0,\n    size                     INTEGER NOT NULL DEFAULT 0,\n    github_created_at        TIMESTAMPTZ,\n    github_updated_at        TIMESTAMPTZ,\n    github_pushed_at         TIMESTAMPTZ,\n    first_seen_at            TIMESTAMPTZ NOT NULL DEFAULT now(),\n    last_seen_at             TIMESTAMPTZ NOT NULL DEFAULT now(),\n    last_seen_run_id         BIGINT,\n    is_active                BOOLEAN NOT NULL DEFAULT true,\n\n    CONSTRAINT fk_github_repositories_sync_runs \n        FOREIGN KEY (last_seen_run_id) \n        REFERENCES public.sync_runs (id) \n        ON DELETE SET NULL\n);\n\n-- Índices de consulta para repositórios\nCREATE INDEX IF NOT EXISTS idx_github_repositories_owner_login \n    ON public.github_repositories (owner_login);\n\nCREATE INDEX IF NOT EXISTS idx_github_repositories_owner_is_active \n    ON public.github_repositories (owner_login, is_active);\n\nCREATE INDEX IF NOT EXISTS idx_github_repositories_github_updated_at \n    ON public.github_repositories (github_updated_at);\n\nCREATE INDEX IF NOT EXISTS idx_github_repositories_last_seen_run_id \n    ON public.github_repositories (last_seen_run_id);\n\n\n-- =====================================================\n-- 4. Tabela: sync_errors\n-- =====================================================\nCREATE TABLE IF NOT EXISTS public.sync_errors (\n    id                    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n    run_id                BIGINT,\n    occurred_at           TIMESTAMPTZ NOT NULL DEFAULT now(),\n    workflow_name         TEXT,\n    workflow_execution_id TEXT,\n    stage                 TEXT,\n    node_name             TEXT,\n    category              TEXT NOT NULL,\n    http_status           INTEGER,\n    github_request_id     TEXT,\n    attempt               INTEGER,\n    retryable             BOOLEAN NOT NULL DEFAULT false,\n    safe_message          TEXT,\n\n    CONSTRAINT fk_sync_errors_sync_runs \n        FOREIGN KEY (run_id) \n        REFERENCES public.sync_runs (id) \n        ON DELETE SET NULL\n);\n\n-- =====================================================\n-- Register migration\n-- =====================================================\n\nINSERT INTO public.schema_migrations (\n    version,\n    description,\n    checksum\n)\nVALUES (\n    1,\n    'Initial schema',\n    'schema-v1'\n)\nON CONFLICT (version) DO NOTHING;\n\nCOMMIT;\n\n\nSELECT\n    version,\n    description,\n    checksum,\n    applied_at\nFROM public.schema_migrations\nWHERE version = 1;",
+          "options": {
+            "largeNumbersOutput": "text"
+          }
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          624,
+          -432
+        ],
+        "id": "85f5204e-dd85-4f53-8a3c-5731ecd8ddd5",
+        "name": "Create Schema V1",
+        "credentials": {
+          "postgres": {
+            "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+            "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "errorMessage": "={{\n  'Schema drift detected. Expected version '\n  + $json.expected_version\n  + ', but database is at version '\n  + $json.current_version\n  + '. '\n  + $json.reason\n}}"
+        },
+        "type": "n8n-nodes-base.stopAndError",
+        "typeVersion": 1,
+        "position": [
+          608,
+          -128
+        ],
+        "id": "bf25c03a-3dbf-411c-b757-fa410ba16372",
+        "name": "Stop And Error - Schema Drift"
+      },
+      {
+        "parameters": {
+          "errorMessage": "={{\n  'Unsupported database schema. '\n  + $json.reason\n}}"
+        },
+        "type": "n8n-nodes-base.stopAndError",
+        "typeVersion": 1,
+        "position": [
+          608,
+          48
+        ],
+        "id": "80e2d278-71bf-4986-9d35-1f857b1eb290",
+        "name": "Stop And Error - Unsupported Schema"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "WITH required_columns AS (\n\n    SELECT *\n    FROM (\n        VALUES\n            (\n                'public',\n                'schema_migrations',\n                'version',\n                'integer',\n                'NO'\n            ),\n            (\n                'public',\n                'schema_migrations',\n                'description',\n                'text',\n                'NO'\n            ),\n            (\n                'public',\n                'schema_migrations',\n                'checksum',\n                'text',\n                'NO'\n            ),\n            (\n                'public',\n                'schema_migrations',\n                'applied_at',\n                'timestamp with time zone',\n                'NO'\n            )\n    ) AS r(\n        table_schema,\n        table_name,\n        column_name,\n        data_type,\n        is_nullable\n    )\n\n),\n\ncolumn_issues AS (\n\n    SELECT\n        format(\n            'Column %I.%I.%I is missing or incompatible',\n            r.table_schema,\n            r.table_name,\n            r.column_name\n        ) AS issue\n\n    FROM required_columns r\n\n    LEFT JOIN information_schema.columns c\n        ON c.table_schema = r.table_schema\n       AND c.table_name = r.table_name\n       AND c.column_name = r.column_name\n\n    WHERE\n        c.column_name IS NULL\n        OR c.data_type IS DISTINCT FROM r.data_type\n        OR c.is_nullable IS DISTINCT FROM r.is_nullable\n\n),\n\npk_issue AS (\n\n    SELECT\n        'schema_migrations.version is not the primary key'\n        AS issue\n\n    WHERE NOT EXISTS (\n\n        SELECT 1\n\n        FROM information_schema.table_constraints tc\n\n        JOIN information_schema.key_column_usage kcu\n          ON tc.constraint_name = kcu.constraint_name\n         AND tc.table_schema = kcu.table_schema\n         AND tc.table_name = kcu.table_name\n\n        WHERE tc.constraint_type = 'PRIMARY KEY'\n          AND tc.table_schema = 'public'\n          AND tc.table_name = 'schema_migrations'\n\n        GROUP BY tc.constraint_name\n\n        HAVING\n            COUNT(*) = 1\n            AND MAX(kcu.column_name) = 'version'\n    )\n\n),\n\nlatest_migration AS (\n\n    SELECT\n        version,\n        description,\n        checksum,\n        applied_at\n\n    FROM public.schema_migrations\n\n    ORDER BY version DESC\n\n    LIMIT 1\n\n),\n\nversion_issue AS (\n\n    SELECT\n        format(\n            'Expected schema version %s but found %s',\n            $1,\n            version\n        ) AS issue\n\n    FROM latest_migration\n\n    WHERE version <> $1\n\n),\n\nempty_migration_issue AS (\n\n    SELECT\n        'schema_migrations contains no migration records'\n        AS issue\n\n    WHERE NOT EXISTS (\n        SELECT 1\n        FROM latest_migration\n    )\n\n),\n\nissues AS (\n\n    SELECT issue FROM column_issues\n\n    UNION ALL\n\n    SELECT issue FROM pk_issue\n\n    UNION ALL\n\n    SELECT issue FROM version_issue\n\n    UNION ALL\n\n    SELECT issue FROM empty_migration_issue\n\n)\n\nSELECT\n\n    COUNT(*) = 0 AS schema_valid,\n\n    COALESCE(\n        jsonb_agg(issue ORDER BY issue),\n        '[]'::jsonb\n    ) AS issues,\n\n    (\n        SELECT version\n        FROM latest_migration\n    ) AS current_version,\n\n    $1::INTEGER AS expected_version\n\nFROM issues;",
+          "options": {
+            "queryReplacement": "={{ [   $('Set Expected Version').first().json.expected_version ] }}"
+          }
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          800,
+          -256
+        ],
+        "id": "b9a4c241-f687-435d-b4f2-6816fd903523",
+        "name": "Validate Required Objects",
+        "credentials": {
+          "postgres": {
+            "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+            "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "6a0dfe9a-99e9-4fb4-a4b2-cba251730c25",
+                "leftValue": "={{ $json.schema_valid }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          1008,
+          -256
+        ],
+        "id": "da232051-f67a-45e9-aac3-27dcf8b00097",
+        "name": "If Schema Valid?"
+      },
+      {
+        "parameters": {
+          "errorMessage": "={{\n  'Database schema validation failed. Issues: '\n  + JSON.stringify($json.issues)\n}}"
+        },
+        "type": "n8n-nodes-base.stopAndError",
+        "typeVersion": 1,
+        "position": [
+          1248,
+          -112
+        ],
+        "id": "c9ff020c-3628-487c-b660-6b11f403a469",
+        "name": "Stop And Error - Invalid Schema"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "11c32dfb-18e9-4da9-a442-5f5aaa521967",
+                "name": "ok",
+                "value": true,
+                "type": "boolean"
+              },
+              {
+                "id": "85419892-ac59-4673-a2c4-738a81c7688c",
+                "name": "schema_status",
+                "value": "ready",
+                "type": "string"
+              },
+              {
+                "id": "8db3469f-5801-44a0-b11b-5d2b4dfc9805",
+                "name": "expected_version",
+                "value": "={{ $('Set Expected Version').first().json.expected_version }}",
+                "type": "string"
+              },
+              {
+                "id": "6f5acfca-07fd-4a02-9abd-a416c66e074f",
+                "name": "current_version",
+                "value": "={{ $json.current_version }}",
+                "type": "string"
+              },
+              {
+                "id": "56cd7720-378e-4b53-b914-f50fa83cdb9b",
+                "name": "initial_state",
+                "value": "={{ $('Classify Schema State').first().json.schema_state }}",
+                "type": "string"
+              },
+              {
+                "id": "29da2844-b8c3-4d86-8a42-0be46ce0fadc",
+                "name": "schema_created",
+                "value": "={{ $('Classify Schema State').first().json.schema_state === 'absent' }}",
+                "type": "string"
+              },
+              {
+                "id": "91e12b20-533d-4039-b488-cd7d9173dead",
+                "name": "schema_valid",
+                "value": "={{ $json.schema_valid }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.5,
+        "position": [
+          1248,
+          -272
+        ],
+        "id": "5da60f4b-2e10-4f16-9790-1066ff13e3dd",
+        "name": "Return Schema Result"
+      },
+      {
+        "parameters": {
+          "content": "## Schema Guard\n\nEste workflow valida e controla a versão do schema PostgreSQL antes da execução da aplicação.\n\n### Fluxo\n`Trigger → Expected Version → Inspect → Classify → Switch → Validate → Return`\n\n### Estados\n- `absent` → banco novo: cria o **Schema V1**\n- `current` → versão correta: valida objetos obrigatórios\n- `drift` → banco está atrás da versão esperada\n- `unsupported` → banco está incompatível ou mais novo que o workflow\n\n### Evolução de versão\nNa **V1**, `absent` cria todo o schema inicial.\n\nQuando surgir a **V2**:\n- `expected_version` passa para `2`\n- banco em V1 será classificado como `drift`\n- o branch `drift` deverá executar a migration incremental `V1 → V2`\n- ao final da migration, registrar `version = 2` em `schema_migrations`\n- nunca recriar o banco para atualizar versão\n- nunca fazer downgrade automático\n\nToda criação/migration deve finalizar em:\n\n`Validate Required Objects → Is Schema Valid? → Return Schema Result`\n\nA versão registrada indica a migration aplicada; a validação confirma que o schema físico continua íntegro.",
+          "height": 576,
+          "width": 816,
+          "color": 5
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          -640,
+          -672
+        ],
+        "typeVersion": 1,
+        "id": "5d2685fd-6f90-4eae-9655-6fe860051c51",
+        "name": "Sticky Note1"
+      }
+    ],
+    "connections": {
+      "Set Expected Version": {
+        "main": [
+          [
+            {
+              "node": "Inspect Schema State",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Execute subworkflow": {
+        "main": [
+          [
+            {
+              "node": "Set Expected Version",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Inspect Schema State": {
+        "main": [
+          [
+            {
+              "node": "Classify Schema State",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Classify Schema State": {
+        "main": [
+          [
+            {
+              "node": "Switch Schema State",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Switch Schema State": {
+        "main": [
+          [
+            {
+              "node": "Create Schema V1",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Validate Required Objects",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Stop And Error - Schema Drift",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Stop And Error - Unsupported Schema",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Schema V1": {
+        "main": [
+          [
+            {
+              "node": "Validate Required Objects",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate Required Objects": {
+        "main": [
+          [
+            {
+              "node": "If Schema Valid?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If Schema Valid?": {
+        "main": [
+          [
+            {
+              "node": "Return Schema Result",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Stop And Error - Invalid Schema",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Douglas E Silva",
+    "name": "Version 6267341a",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-09-29T01:17:01.160Z",
+    "updatedAt": "2026-10-07T09:57:42.348Z",
+    "workflowPublishHistory": [
+      {
+        "id": 12,
+        "workflowId": "dEgxD41QSk0cCoXr",
+        "versionId": "6267341a-2f6b-4997-9875-8ca2af564780",
+        "event": "activated",
+        "userId": "97cb7e86-2340-4ee9-97a6-b4951ec9a5cf",
+        "createdAt": "2026-10-07T09:57:42.329Z"
+      },
+      {
+        "id": 13,
+        "workflowId": "dEgxD41QSk0cCoXr",
+        "versionId": "6267341a-2f6b-4997-9875-8ca2af564780",
+        "event": "deactivated",
+        "userId": "97cb7e86-2340-4ee9-97a6-b4951ec9a5cf",
+        "createdAt": "2026-10-07T09:58:00.413Z"
+      },
+      {
+        "id": 14,
+        "workflowId": "dEgxD41QSk0cCoXr",
+        "versionId": "6267341a-2f6b-4997-9875-8ca2af564780",
+        "event": "activated",
+        "userId": "97cb7e86-2340-4ee9-97a6-b4951ec9a5cf",
+        "createdAt": "2026-10-07T09:58:00.413Z"
+      }
+    ]
+  }
+}

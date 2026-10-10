@@ -7,3 +7,6 @@ node_modules/
 tmp/
 data/
 
+# Raw API snapshots may contain environment-specific identifiers, credential
+# references and execution data. Only workflows/sanitized/ is committed.
+workflows/*.json

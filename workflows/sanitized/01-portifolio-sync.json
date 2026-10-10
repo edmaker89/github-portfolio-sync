@@ -1,0 +1,2396 @@
+{
+  "id": "u8oHC2DBgZUGMZUH",
+  "name": "Portifolio Sync",
+  "description": "",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-09-27T11:37:07.848Z",
+  "updatedAt": "2026-10-10T16:51:22.775Z",
+  "isArchived": false,
+  "versionId": "096edf19-ceea-4266-9081-902e50f84127",
+  "versionCounter": 630,
+  "sourceWorkflowId": null,
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "476ce125-1dca-49a3-b454-0b07f61987f4",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        832
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "d5fc23da-4e47-45fe-8b11-bd53ae008fa0",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -656,
+        1024
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fe4aa4db-7fe1-4e90-9798-bf21d0fbbce1",
+      "name": "Runtime Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -432,
+        928
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "74c4a8df-28a3-4c6f-8aac-be5b3b30c9ed",
+              "name": "github_username",
+              "value": "edmaker89",
+              "type": "string"
+            },
+            {
+              "id": "2458bc9a-82f6-49e4-b76b-b0113fd8f2e2",
+              "name": "api_mode",
+              "value": "live",
+              "type": "string"
+            },
+            {
+              "id": "c180f1ed-f9b8-4a3e-ad4e-750e4330a601",
+              "name": "live_base_url",
+              "value": "https://api.github.com",
+              "type": "string"
+            },
+            {
+              "id": "3fb141f0-747c-4479-a038-3a03a48e501e",
+              "name": "simulator_base_url",
+              "value": "https://n8n-homelab.edmaker.dev.br/webhook/3da72337-4263-4f71-bbb2-a8c8dea89093/p01/github",
+              "type": "string"
+            },
+            {
+              "id": "b4a7b01c-91dc-4968-9a4e-b53c3d582667",
+              "name": "api_version",
+              "value": "2026-03-10",
+              "type": "string"
+            },
+            {
+              "id": "cce3d4ab-509b-4f2d-b269-09ff1eb5caa8",
+              "name": "max_pages",
+              "value": 10,
+              "type": "number"
+            },
+            {
+              "id": "e2b20577-d90a-467e-bc2e-f6b4f42bda81",
+              "name": "timeout_ms",
+              "value": "30000",
+              "type": "number"
+            },
+            {
+              "id": "5a05dc26-89fc-4b61-8f1c-83dd1bb7c49e",
+              "name": "max_retries",
+              "value": "3",
+              "type": "number"
+            },
+            {
+              "id": "d0725f90-f670-4658-91c0-853ab92acd87",
+              "name": "stale_after_minutes",
+              "value": 120,
+              "type": "number"
+            },
+            {
+              "id": "cbe588ed-acbd-44ee-be57-12eadcf6dde5",
+              "name": "simulator_scenario",
+              "value": "happy",
+              "type": "string"
+            },
+            {
+              "id": "4749edaa-b670-42f1-bce4-bc80ec9a072f",
+              "name": "workflow_execution_id",
+              "value": "={{ $execution.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "56221890-cb6c-4704-97b9-56e3cf55a386",
+      "name": "Is Schema Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        240,
+        928
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c514ec30-49ac-4874-b47e-d9a70ff742cf",
+              "leftValue": "={{ $json.schema_status === \"ready\" || $json.schema_valid === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "288ad3d7-acb7-4c7a-b135-17412a5fb637",
+      "name": "Stop Schema Error",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        688,
+        1024
+      ],
+      "parameters": {
+        "errorMessage": "={{'P01_SAFE_ERROR:' + JSON.stringify({  stage: 'schema',  category: 'schema',  attempt: 0,  retryable: false,  message: 'Required database schema is not ready'})}}"
+      }
+    },
+    {
+      "id": "229c1371-c778-4851-aa8a-1d01763e3618",
+      "name": "Validate Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        928
+      ],
+      "parameters": {
+        "jsCode": "const c = $input.first().json ?? {};\n\nconst errors = [];\n\nconst githubUsername =\n  String(c.github_username ?? '').trim();\n\nconst apiMode =\n  String(c.api_mode ?? '').trim().toLowerCase();\n\nconst maxPages = Number(c.max_pages);\nconst timeoutMs = Number(c.timeout_ms);\n\nif (!githubUsername) {\n  errors.push('github_username is required');\n}\n\nif (githubUsername.length > 39) {\n  errors.push('github_username must have at most 39 characters');\n}\n\nif (\n  githubUsername &&\n  !/^[A-Za-z0-9-]+$/.test(githubUsername)\n) {\n  errors.push(\n    'github_username may contain only letters, numbers and hyphens'\n  );\n}\n\nif (\n  githubUsername.startsWith('-') ||\n  githubUsername.endsWith('-')\n) {\n  errors.push(\n    'github_username cannot start or end with a hyphen'\n  );\n}\n\nif (\n  !Number.isInteger(maxPages) ||\n  maxPages < 1 ||\n  maxPages > 100\n) {\n  errors.push('max_pages must be an integer between 1 and 100');\n}\n\nif (\n  !Number.isFinite(timeoutMs) ||\n  timeoutMs <= 0\n) {\n  errors.push('timeout_ms must be positive');\n}\n\nif (!['live', 'simulator'].includes(apiMode)) {\n  errors.push('api_mode must be live or simulator');\n}\n\nconst rawInput =\n  apiMode === 'live'\n    ? c.live_base_url\n    : c.simulator_base_url;\n\nif (!rawInput) {\n    errors.push('API base URL is missing or undefined');\n}\n// Sanitiza removendo aspas externas, espaços e caracteres invisíveis/de controle\nconst rawBaseUrl = String(rawInput ?? '')\n  .trim()\n  .replace(/^[\"']|[\"']$/g, '')\n  .replace(/[\\u0000-\\u001F\\u007F-\\u009F\\u200B-\\u200D\\uFEFF]/g, '');\n\nlet apiBaseUrl = null;\n\ntry {\n  console.log(\"VALOR RECEBIDO:\", JSON.stringify(rawBaseUrl));\n  const urlPattern = /^(https?):\\/\\/[^\\s/$.?#].[^\\s]*$/i;\n    if (!urlPattern.test(rawBaseUrl)) {\n        throw new Error(\"Invalid URL format\");\n    }\n    \n    if (apiMode === 'live' && !rawBaseUrl.startsWith('https:')) {\n        errors.push('live API base URL must use HTTPS');\n    }\n    \n    apiBaseUrl = rawBaseUrl.replace(/\\/+$/, '');\n} catch (err) {\n    errors.push('API base URL is invalid: ' + err.message);\n}\n\nif (errors.length > 0) {\n  throw new Error(\n    'P01_SAFE_ERROR:' +\n    JSON.stringify({\n      stage: 'configuration',\n      category: 'validation',\n      attempt: 0,\n      retryable: false,\n      message: errors.join('; ')\n    })\n  );\n}\n\nreturn [\n  {\n    json: {\n      github_username: githubUsername,\n      api_mode: apiMode,\n      api_base_url: apiBaseUrl,\n\n      api_version:\n        String(c.api_version ?? '2026-03-10'),\n\n      max_pages: maxPages,\n      timeout_ms: timeoutMs,\n\n      max_retries:\n        Number.isInteger(Number(c.max_retries))\n          ? Number(c.max_retries)\n          : 3,\n\n      stale_after_minutes:\n        Number.isInteger(\n          Number(c.stale_after_minutes)\n        )\n          ? Number(c.stale_after_minutes)\n          : 120,\n\n      simulator_scenario:\n        String(\n          c.simulator_scenario ?? 'happy'\n        ),\n\n      workflow_execution_id:\n        String(c.workflow_execution_id ?? '')\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "6bb78cf5-ed48-4f53-a5f1-da4793a48cd4",
+      "name": "Ensure Database Schema",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        16,
+        928
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "dEgxD41QSk0cCoXr",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/dEgxD41QSk0cCoXr",
+          "cachedResultName": "Ensure Database Schema"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "expected_version": "1"
+          },
+          "matchingColumns": [
+            "expected_version"
+          ],
+          "schema": [
+            {
+              "id": "expected_version",
+              "displayName": "expected_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "c6de4cc2-73f4-4fa9-bf23-724d395a24be",
+      "name": "Close Stale Runs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        464,
+        832
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH closed AS (\n    UPDATE public.sync_runs\n    SET\n        status = 'failed',\n        finished_at = now(),\n        heartbeat_at = now(),\n        error_code = 'stale_run',\n        error_message = 'Run closed automatically after heartbeat timeout'\n    WHERE\n        owner_login = ($1::jsonb ->> 'owner_login')\n        AND status = 'running'\n        AND heartbeat_at <\n            now() -\n            (\n                ($1::jsonb ->> 'stale_after_minutes')::integer\n                * interval '1 minute'\n            )\n    RETURNING id\n)\nSELECT COUNT(*)::integer AS stale_runs_closed\nFROM closed;",
+        "options": {
+          "queryReplacement": "={{\nJSON.stringify({\n  owner_login:\n    $('Validate Configuration').first().json.github_username,\n\n  stale_after_minutes:\n    $('Validate Configuration').first().json.stale_after_minutes\n})\n}}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "792d352d-a50e-4428-9598-e049f61f313e",
+      "name": "Create Running Sync",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        688,
+        832
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH attempted AS (\n    INSERT INTO public.sync_runs (\n        owner_login,\n        status\n    )\n    VALUES (\n        ($1::jsonb ->> 'owner_login'),\n        'running'\n    )\n    ON CONFLICT (owner_login)\n        WHERE status = 'running'\n    DO NOTHING\n    RETURNING id\n)\nSELECT\n    attempted.id,\n    (attempted.id IS NOT NULL) AS created\nFROM (SELECT 1) AS single_row\nLEFT JOIN attempted ON true;",
+        "options": {
+          "queryReplacement": "={{\nJSON.stringify({\n  owner_login:\n    $('Validate Configuration').first().json.github_username\n})\n}}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "f512e53c-4c13-498c-be90-225f6a2a1b2d",
+      "name": "Execute a SQL query",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        464,
+        1024
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n    SELECT $1::jsonb AS j\n)\n\nUPDATE public.sync_runs\nSET\n    status = 'failed',\n    finished_at = now(),\n    heartbeat_at = now(),\n\n    error_code =\n        input.j ->> 'error_code',\n\n    error_message =\n        input.j ->> 'safe_message',\n\n    last_github_request_id =\n        NULLIF(\n            input.j ->> 'github_request_id',\n            ''\n        )\n\nFROM input\n\nWHERE\n    sync_runs.id =\n        (input.j ->> 'run_id')::bigint\n\nRETURNING\n    sync_runs.id AS run_id,\n    sync_runs.status,\n    sync_runs.error_code,\n    sync_runs.error_message;",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "bdad68ba-140c-4398-978c-6fc829fbb49f",
+      "name": "Create Skipped Sync",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1136,
+        928
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO public.sync_runs (\n    owner_login,\n    status,\n    finished_at,\n    error_code,\n    error_message\n)\nVALUES (\n    ($1::jsonb ->> 'owner_login'),\n    'skipped',\n    now(),\n    'concurrent_run',\n    'Another synchronization is already running'\n)\nRETURNING\n    id,\n    owner_login,\n    status,\n    started_at,\n    finished_at,\n    pages_fetched,\n    records_received,\n    records_inserted,\n    records_updated,\n    records_deactivated;",
+        "options": {
+          "queryReplacement": "={{\nJSON.stringify({\n  owner_login:\n    $('Validate Configuration').first().json.github_username\n})\n}}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "18992312-e284-4502-a1c9-238b28b7397b",
+      "name": "API Mode?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1584,
+        656
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "579d7c0c-02fe-4ae7-b455-e16318ed893a",
+              "leftValue": "={{ $('Validate Configuration').item.json.api_mode }}",
+              "rightValue": "live",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "9311e913-f5d5-497f-99eb-d76f90adbe80",
+      "name": "Simulator | Profile Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "retryOnFail": false,
+      "onError": "continueErrorOutput",
+      "position": [
+        1808,
+        928
+      ],
+      "parameters": {
+        "url": "={{ $json.api_base_url + '/users/' + $json.github_username }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "scenario",
+              "value": "={{ $json.simulator_scenario }}"
+            },
+            {
+              "name": "attempt",
+              "value": "={{ $json.attempt }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "lowercaseHeaders": false,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": "={{ $json.timeout_ms }}"
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_02_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_02_NAME"
+        }
+      }
+    },
+    {
+      "id": "27934bbb-bc6e-442a-abad-0e3c9f1173c2",
+      "name": "Build Sync Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        736
+      ],
+      "parameters": {
+        "jsCode": "const run = $input.first().json;\nconst cfg = $('Validate Configuration').first().json;\n\nreturn [\n  {\n    json: {\n      run_id: Number(run.id),\n\n      github_username: String(cfg.github_username),\n\n      api_mode: String(cfg.api_mode),\n\n      api_base_url: String(cfg.api_base_url),\n\n      api_version: String(\n        cfg.api_version ?? '2026-03-10'\n      ),\n\n      max_pages: Number(cfg.max_pages),\n\n      timeout_ms: Number(cfg.timeout_ms),\n\n      // Política fixa do projeto:\n      // tentativa original + 3 retries\n      max_retries: 3,\n\n      simulator_scenario: String(\n        cfg.simulator_scenario ?? 'happy'\n      ),\n\n      stage: 'profile',\n\n      request_kind: 'profile',\n\n      // tentativa ORIGINAL\n      attempt: 0\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "e5a72038-3f66-4d07-b7a9-4afdd011615c",
+      "name": "Prepare Profile Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        736
+      ],
+      "parameters": {
+        "jsCode": "const x = $input.first().json;\n\nreturn [\n  {\n    json: {\n      ...x,\n\n      stage: 'profile',\n      request_kind: 'profile'\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "cf0970be-1691-4e73-9843-1897e3411c92",
+      "name": "Simulator | Profile Request1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "retryOnFail": false,
+      "onError": "continueErrorOutput",
+      "position": [
+        1808,
+        464
+      ],
+      "parameters": {
+        "url": "={{ $json.api_base_url + '/users/' + $json.github_username }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "={{ $json.api_version }}"
+            }
+          ]
+        },
+        "options": {
+          "lowercaseHeaders": false,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": "={{ $json.timeout_ms }}"
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_02_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_02_NAME"
+        }
+      }
+    },
+    {
+      "id": "f0465cf6-adba-4a2d-8ef1-400e13f057c5",
+      "name": "Classify Profile Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        560
+      ],
+      "parameters": {
+        "jsCode": "// Resposta do HTTP Request\nconst response = $json ?? {};\n\n// Contexto que entrou no request atual.\n// Usamos .item para manter a associação correta inclusive\n// quando o node executar novamente durante retries.\nconst ctx =\n  $('Prepare Profile Request').item.json;\n\n\n// --------------------------------------------------\n// Helpers\n// --------------------------------------------------\n\nfunction getHeader(headers, name) {\n  if (!headers || typeof headers !== 'object') {\n    return null;\n  }\n\n  const wanted = name.toLowerCase();\n\n  for (const [key, value] of Object.entries(headers)) {\n    if (key.toLowerCase() === wanted) {\n      return value;\n    }\n  }\n\n  return null;\n}\n\nfunction integerOrNull(value) {\n  if (\n    value === null ||\n    value === undefined ||\n    value === ''\n  ) {\n    return null;\n  }\n\n  const n = Number(value);\n\n  return Number.isInteger(n)\n    ? n\n    : null;\n}\n\n\n// --------------------------------------------------\n// Response\n// --------------------------------------------------\n\nconst status =\n  Number(response.statusCode ?? 0);\n\nconst body =\n  response.body ?? null;\n\nconst headers =\n  response.headers ?? {};\n\n\n// --------------------------------------------------\n// Headers permitidos\n// --------------------------------------------------\n\nconst githubRequestId =\n  getHeader(\n    headers,\n    'x-github-request-id'\n  );\n\nconst rateLimitLimit =\n  integerOrNull(\n    getHeader(\n      headers,\n      'x-ratelimit-limit'\n    )\n  );\n\nconst rateLimitRemaining =\n  integerOrNull(\n    getHeader(\n      headers,\n      'x-ratelimit-remaining'\n    )\n  );\n\nconst rateLimitResetEpoch =\n  integerOrNull(\n    getHeader(\n      headers,\n      'x-ratelimit-reset'\n    )\n  );\n\nconst retryAfter =\n  getHeader(\n    headers,\n    'retry-after'\n  );\n\n\n// --------------------------------------------------\n// Reset timestamp\n// --------------------------------------------------\n\nlet rateLimitResetAt = null;\n\nif (rateLimitResetEpoch !== null) {\n  const date =\n    new Date(\n      rateLimitResetEpoch * 1000\n    );\n\n  if (!Number.isNaN(date.getTime())) {\n    rateLimitResetAt =\n      date.toISOString();\n  }\n}\n\n\n// --------------------------------------------------\n// Mensagem GitHub\n// --------------------------------------------------\n\nlet githubMessage = '';\n\nif (\n  body &&\n  typeof body === 'object' &&\n  !Array.isArray(body)\n) {\n  githubMessage =\n    String(body.message ?? '');\n}\n\n\n// --------------------------------------------------\n// Identificar secondary rate limit\n// --------------------------------------------------\n\nconst secondaryRateLimit =\n  (\n    status === 403 ||\n    status === 429\n  ) &&\n  (\n    retryAfter !== null ||\n    /secondary rate limit|abuse/i.test(\n      githubMessage\n    )\n  );\n\n\n// --------------------------------------------------\n// Classificação\n// --------------------------------------------------\n\nlet classification =\n  'unexpected_status';\n\nlet category =\n  'unexpected';\n\nlet retryable =\n  false;\n\nlet rateLimitKind =\n  null;\n\n\n// SUCCESS\n\nif (\n  status >= 200 &&\n  status <= 299\n) {\n  classification = 'success';\n  category = null;\n  retryable = false;\n}\n\n\n// 401\n\nelse if (status === 401) {\n  classification =\n    'authentication_error';\n\n  category =\n    'authentication';\n\n  retryable = false;\n}\n\n\n// RATE LIMIT\n\nelse if (\n  status === 429 ||\n  (\n    status === 403 &&\n    rateLimitRemaining === 0\n  ) ||\n  secondaryRateLimit\n) {\n  classification =\n    'rate_limited';\n\n  category =\n    'rate_limit';\n\n  retryable = true;\n\n  rateLimitKind =\n    secondaryRateLimit\n      ? 'secondary'\n      : 'primary';\n}\n\n\n// 403 comum\n\nelse if (status === 403) {\n  classification =\n    'authorization_error';\n\n  category =\n    'authorization';\n\n  retryable = false;\n}\n\n\n// 5xx\n\nelse if (\n  status >= 500 &&\n  status <= 599\n) {\n  classification =\n    'retryable_server_error';\n\n  category =\n    'github_server';\n\n  retryable = true;\n}\n\n\n// --------------------------------------------------\n// Saída SEGURA\n// --------------------------------------------------\n//\n// Não retornamos headers completos.\n// --------------------------------------------------\n\nreturn {\n  json: {\n    ...ctx,\n\n    http_status:\n      status || null,\n\n    github_request_id:\n      githubRequestId,\n\n    rate_limit_limit:\n      rateLimitLimit,\n\n    rate_limit_remaining:\n      rateLimitRemaining,\n\n    rate_limit_reset_at:\n      rateLimitResetAt,\n\n    retry_after:\n      retryAfter,\n\n    rate_limit_kind:\n      rateLimitKind,\n\n    classification,\n\n    category,\n\n    retryable,\n\n    response_body:\n      body\n  }\n};"
+      }
+    },
+    {
+      "id": "a2d89379-ff8c-44b6-b4db-6f682a18e72e",
+      "name": "Is Profile Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2256,
+        560
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e679a1fb-02ea-4ebc-8544-a009867e7ac9",
+              "leftValue": "={{ $json.classification === 'success' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "424f0011-9c90-4de9-b68d-349ddfbed09d",
+      "name": "Normalize Profile",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3376,
+        736
+      ],
+      "parameters": {
+        "jsCode": "const x = $input.first().json;\n\nconst body =\n  x.response_body;\n\n\n// --------------------------------------------------\n// Helpers\n// --------------------------------------------------\n\nfunction nullableString(value) {\n  if (\n    value === null ||\n    value === undefined\n  ) {\n    return null;\n  }\n\n  const text =\n    String(value);\n\n  return text.trim() === ''\n    ? null\n    : text;\n}\n\n\nfunction requiredString(\n  value,\n  field,\n  errors\n) {\n  const normalized =\n    nullableString(value);\n\n  if (normalized === null) {\n    errors.push(\n      `missing required field: ${field}`\n    );\n  }\n\n  return normalized;\n}\n\n\nfunction nonNegativeInteger(\n  value,\n  field,\n  errors\n) {\n  const n =\n    Number(value ?? 0);\n\n  if (\n    !Number.isInteger(n) ||\n    n < 0\n  ) {\n    errors.push(\n      `invalid non-negative integer: ${field}`\n    );\n\n    return 0;\n  }\n\n  return n;\n}\n\n\nfunction isoOrNull(\n  value,\n  field,\n  errors\n) {\n  if (\n    value === null ||\n    value === undefined ||\n    value === ''\n  ) {\n    return null;\n  }\n\n  const date =\n    new Date(value);\n\n  if (\n    Number.isNaN(\n      date.getTime()\n    )\n  ) {\n    errors.push(\n      `invalid timestamp: ${field}`\n    );\n\n    return null;\n  }\n\n  return date.toISOString();\n}\n\n\n// --------------------------------------------------\n// Body\n// --------------------------------------------------\n\nconst errors = [];\n\nif (\n  !body ||\n  typeof body !== 'object' ||\n  Array.isArray(body)\n) {\n  errors.push(\n    'profile response must be an object'\n  );\n}\n\n\n// --------------------------------------------------\n// Obrigatórios\n// --------------------------------------------------\n\nlet githubUserId = null;\n\nif (\n  body?.id === null ||\n  body?.id === undefined\n) {\n  errors.push(\n    'missing required field: id'\n  );\n}\nelse {\n  githubUserId =\n    String(body.id);\n}\n\n\nconst login =\n  requiredString(\n    body?.login,\n    'login',\n    errors\n  );\n\nconst htmlUrl =\n  requiredString(\n    body?.html_url,\n    'html_url',\n    errors\n  );\n\n\n// --------------------------------------------------\n// Counters\n// --------------------------------------------------\n\nconst publicRepos =\n  nonNegativeInteger(\n    body?.public_repos,\n    'public_repos',\n    errors\n  );\n\nconst followers =\n  nonNegativeInteger(\n    body?.followers,\n    'followers',\n    errors\n  );\n\nconst following =\n  nonNegativeInteger(\n    body?.following,\n    'following',\n    errors\n  );\n\n\n// --------------------------------------------------\n// Datas\n// --------------------------------------------------\n\nconst githubCreatedAt =\n  isoOrNull(\n    body?.created_at,\n    'created_at',\n    errors\n  );\n\nconst githubUpdatedAt =\n  isoOrNull(\n    body?.updated_at,\n    'updated_at',\n    errors\n  );\n\n\n// --------------------------------------------------\n// Falha\n// --------------------------------------------------\n\nif (errors.length > 0) {\n  return [\n    {\n      json: {\n        valid: false,\n\n        failure: {\n          run_id:\n            x.run_id,\n\n          stage:\n            'profile',\n\n          node_name:\n            '05 | Normalize Profile',\n\n          category:\n            'validation',\n\n          error_code:\n            'profile_validation_error',\n\n          http_status:\n            x.http_status,\n\n          github_request_id:\n            x.github_request_id,\n\n          rate_limit_limit:\n            x.rate_limit_limit,\n\n          rate_limit_remaining:\n            x.rate_limit_remaining,\n\n          rate_limit_reset_at:\n            x.rate_limit_reset_at,\n\n          attempt:\n            x.attempt,\n\n          retryable:\n            false,\n\n          safe_message:\n            errors.join('; ')\n        }\n      }\n    }\n  ];\n}\n\n\n// --------------------------------------------------\n// SUCESSO\n//\n// Campos desconhecidos são descartados.\n// --------------------------------------------------\n\nreturn [\n  {\n    json: {\n      valid: true,\n\n      run_id:\n        x.run_id,\n\n      github_username:\n        x.github_username,\n\n      api_mode:\n        x.api_mode,\n\n      api_base_url:\n        x.api_base_url,\n\n      api_version:\n        x.api_version,\n\n      max_pages:\n        x.max_pages,\n\n      timeout_ms:\n        x.timeout_ms,\n\n      max_retries:\n        x.max_retries,\n\n      simulator_scenario:\n        x.simulator_scenario,\n\n      github_request_id:\n        x.github_request_id,\n\n      rate_limit_limit:\n        x.rate_limit_limit,\n\n      rate_limit_remaining:\n        x.rate_limit_remaining,\n\n      rate_limit_reset_at:\n        x.rate_limit_reset_at,\n\n      profile: {\n        github_user_id:\n          githubUserId,\n\n        login,\n\n        name:\n          nullableString(\n            body.name\n          ),\n\n        bio:\n          nullableString(\n            body.bio\n          ),\n\n        company:\n          nullableString(\n            body.company\n          ),\n\n        location:\n          nullableString(\n            body.location\n          ),\n\n        blog:\n          nullableString(\n            body.blog\n          ),\n\n        html_url:\n          htmlUrl,\n\n        avatar_url:\n          nullableString(\n            body.avatar_url\n          ),\n\n        public_repos:\n          publicRepos,\n\n        followers,\n\n        following,\n\n        github_created_at:\n          githubCreatedAt,\n\n        github_updated_at:\n          githubUpdatedAt\n      }\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "0eca37b3-7479-436e-a1ed-9020ca94f28b",
+      "name": "Is Profile Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3600,
+        736
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "41231ec0-d172-46d9-a772-cbca4e552bab",
+              "leftValue": "={{ $json.valid === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "809099dc-3138-4cd4-a8b8-7cb1810ec4bc",
+      "name": "Extract Profile Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7632,
+        880
+      ],
+      "parameters": {
+        "jsCode": "return [\n  {\n    json:\n      $input.first().json.failure\n  }\n];"
+      }
+    },
+    {
+      "id": "6899289d-d1e7-4d40-9d51-37bf8f1366e0",
+      "name": "90 | Record Run Failure",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        7856,
+        -16
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n    SELECT $1::jsonb AS j\n),\n\nupdated AS (\n    UPDATE public.sync_runs\n    SET\n        status =\n            'failed',\n\n        finished_at =\n            now(),\n\n        heartbeat_at =\n            now(),\n\n        error_code =\n            input.j ->> 'error_code',\n\n        error_message =\n            input.j ->> 'safe_message',\n\n        rate_limit_limit =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'rate_limit_limit',\n                    ''\n                )::INTEGER,\n                sync_runs.rate_limit_limit\n            ),\n\n        rate_limit_remaining =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'rate_limit_remaining',\n                    ''\n                )::INTEGER,\n                sync_runs.rate_limit_remaining\n            ),\n\n        rate_limit_reset_at =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'rate_limit_reset_at',\n                    ''\n                )::TIMESTAMPTZ,\n                sync_runs.rate_limit_reset_at\n            ),\n\n        last_github_request_id =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'github_request_id',\n                    ''\n                ),\n                sync_runs.last_github_request_id\n            )\n\n    FROM input\n\n    WHERE\n        sync_runs.id =\n            (input.j ->> 'run_id')::BIGINT\n\n    RETURNING sync_runs.id\n)\n\nSELECT\n    input.j AS context\n\nFROM input\nJOIN updated ON true;",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "cc43e938-1ff4-475a-8119-7f832ffe57cd",
+      "name": "Upsert Profile",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        3824,
+        656
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n    SELECT $1::jsonb AS j\n),\n\nupserted AS (\n    INSERT INTO public.github_profiles (\n        github_user_id,\n        login,\n        name,\n        bio,\n        company,\n        location,\n        blog,\n        html_url,\n        avatar_url,\n        public_repos,\n        followers,\n        following,\n        github_created_at,\n        github_updated_at,\n        synced_at\n    )\n    SELECT\n        (j -> 'profile' ->> 'github_user_id')::BIGINT,\n        j -> 'profile' ->> 'login',\n        j -> 'profile' ->> 'name',\n        j -> 'profile' ->> 'bio',\n        j -> 'profile' ->> 'company',\n        j -> 'profile' ->> 'location',\n        j -> 'profile' ->> 'blog',\n        j -> 'profile' ->> 'html_url',\n        j -> 'profile' ->> 'avatar_url',\n        (j -> 'profile' ->> 'public_repos')::INTEGER,\n        (j -> 'profile' ->> 'followers')::INTEGER,\n        (j -> 'profile' ->> 'following')::INTEGER,\n        NULLIF(\n            j -> 'profile' ->> 'github_created_at',\n            ''\n        )::TIMESTAMPTZ,\n        NULLIF(\n            j -> 'profile' ->> 'github_updated_at',\n            ''\n        )::TIMESTAMPTZ,\n        now()\n    FROM input\n\n    ON CONFLICT (github_user_id)\n    DO UPDATE SET\n        login =\n            EXCLUDED.login,\n\n        name =\n            EXCLUDED.name,\n\n        bio =\n            EXCLUDED.bio,\n\n        company =\n            EXCLUDED.company,\n\n        location =\n            EXCLUDED.location,\n\n        blog =\n            EXCLUDED.blog,\n\n        html_url =\n            EXCLUDED.html_url,\n\n        avatar_url =\n            EXCLUDED.avatar_url,\n\n        public_repos =\n            EXCLUDED.public_repos,\n\n        followers =\n            EXCLUDED.followers,\n\n        following =\n            EXCLUDED.following,\n\n        github_created_at =\n            EXCLUDED.github_created_at,\n\n        github_updated_at =\n            EXCLUDED.github_updated_at,\n\n        synced_at =\n            now()\n\n    RETURNING\n        github_user_id,\n        login\n)\n\nSELECT\n    input.j ||\n    jsonb_build_object(\n        'profile_persisted',\n        true\n    ) AS context\n\nFROM input\nCROSS JOIN upserted;",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "13273d5b-3622-456f-8de1-4dd4730d304b",
+      "name": "Restore Profile Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4048,
+        656
+      ],
+      "parameters": {
+        "jsCode": "const context =\n  $input.first().json.context;\n\nreturn [\n  {\n    json:\n      typeof context === 'string'\n        ? JSON.parse(context)\n        : context\n  }\n];"
+      }
+    },
+    {
+      "id": "943a7bc1-c044-4d44-a0c0-bf1ff610ab6a",
+      "name": "Update Run Profile Metadata",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        4272,
+        656
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n    SELECT $1::jsonb AS j\n),\n\nupdated AS (\n    UPDATE public.sync_runs\n    SET\n        heartbeat_at = now(),\n\n        rate_limit_limit =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'rate_limit_limit',\n                    ''\n                )::INTEGER,\n                sync_runs.rate_limit_limit\n            ),\n\n        rate_limit_remaining =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'rate_limit_remaining',\n                    ''\n                )::INTEGER,\n                sync_runs.rate_limit_remaining\n            ),\n\n        rate_limit_reset_at =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'rate_limit_reset_at',\n                    ''\n                )::TIMESTAMPTZ,\n                sync_runs.rate_limit_reset_at\n            ),\n\n        last_github_request_id =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'github_request_id',\n                    ''\n                ),\n                sync_runs.last_github_request_id\n            )\n\n    FROM input\n\n    WHERE\n        sync_runs.id =\n        (input.j ->> 'run_id')::BIGINT\n\n    RETURNING sync_runs.id\n)\n\nSELECT\n    input.j AS context\n\nFROM input\nJOIN updated ON true;",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "bb634920-2b25-4ae4-b399-5db59d4ca8ce",
+      "name": "Init Repository Pagination",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4496,
+        656
+      ],
+      "parameters": {
+        "jsCode": "const x = $input.first().json.context\n\nreturn [\n  {\n    json: {\n      run_id:\n        x.run_id,\n      \n      owner_login:\n        x.profile.login,\n\n      github_username:\n        x.github_username,\n\n      api_mode:\n        x.api_mode,\n\n      api_base_url:\n        x.api_base_url,\n\n      api_version:\n        x.api_version,\n\n      max_pages:\n        x.max_pages,\n\n      timeout_ms:\n        x.timeout_ms,\n\n      max_retries:\n        x.max_retries,\n\n      simulator_scenario:\n        x.simulator_scenario,\n\n      stage:\n        'repositories',\n\n      request_kind:\n        'repositories',\n\n      page:\n        1,\n\n      attempt:\n        0\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "7f15a118-43e3-454a-88b0-04df068e072d",
+      "name": "Prepare Repository Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4720,
+        -400
+      ],
+      "parameters": {
+        "jsCode": "const x =\n  $input.first().json;\n\nconst page =\n  Number(x.page);\n\nif (\n  !Number.isInteger(page) ||\n  page < 1\n) {\n  throw new Error(\n    'Invalid internal repository page'\n  );\n}\n\nreturn [\n  {\n    json: {\n      ...x,\n      stage: 'repositories',\n      request_kind: 'repositories',\n      page\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "dcd56b87-1067-4195-a433-3dc0d50de362",
+      "name": "Repository API Mode",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        4944,
+        -400
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8b786571-1141-45ea-a3ea-c428d0520e66",
+              "leftValue": "={{ $json.api_mode === \"live\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5e015cb6-a55b-41c4-9bf4-2f10e82da077",
+      "name": "Live | Get Repositories",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "retryOnFail": false,
+      "onError": "continueErrorOutput",
+      "position": [
+        5168,
+        -544
+      ],
+      "parameters": {
+        "url": "={{ $json.api_base_url + '/users/' + $json.github_username + '/repos' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "owner"
+            },
+            {
+              "name": "sort",
+              "value": "updated"
+            },
+            {
+              "name": "direction",
+              "value": "desc"
+            },
+            {
+              "name": "per_page",
+              "value": "100"
+            },
+            {
+              "name": "page",
+              "value": "={{ $json.page }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "={{ $json.api_version }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "pagination": {
+            "pagination": {
+              "paginationMode": "off"
+            }
+          },
+          "timeout": "={{ $json.timeout_ms }}"
+        }
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_01_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_01_NAME"
+        }
+      }
+    },
+    {
+      "id": "e383768f-6dc8-44d3-bdb6-43948af55ab0",
+      "name": "Classify Repository Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5392,
+        -496
+      ],
+      "parameters": {
+        "jsCode": "const response =\n  $json ?? {};\n\nconst ctx =\n  $('Prepare Repository Request').item.json;\n\n\nfunction getHeader(headers, name) {\n  if (!headers || typeof headers !== 'object') {\n    return null;\n  }\n\n  const wanted =\n    name.toLowerCase();\n\n  for (\n    const [key, value]\n    of Object.entries(headers)\n  ) {\n    if (\n      key.toLowerCase() === wanted\n    ) {\n      return value;\n    }\n  }\n\n  return null;\n}\n\n\nfunction integerOrNull(value) {\n  if (\n    value === null ||\n    value === undefined ||\n    value === ''\n  ) {\n    return null;\n  }\n\n  const n =\n    Number(value);\n\n  return Number.isInteger(n)\n    ? n\n    : null;\n}\n\n\nconst status =\n  Number(\n    response.statusCode ?? 0\n  );\n\nconst body =\n  response.body ?? null;\n\nconst headers =\n  response.headers ?? {};\n\n\nconst githubRequestId =\n  getHeader(\n    headers,\n    'x-github-request-id'\n  );\n\nconst rateLimitLimit =\n  integerOrNull(\n    getHeader(\n      headers,\n      'x-ratelimit-limit'\n    )\n  );\n\nconst rateLimitRemaining =\n  integerOrNull(\n    getHeader(\n      headers,\n      'x-ratelimit-remaining'\n    )\n  );\n\nconst resetEpoch =\n  integerOrNull(\n    getHeader(\n      headers,\n      'x-ratelimit-reset'\n    )\n  );\n\nconst retryAfter =\n  getHeader(\n    headers,\n    'retry-after'\n  );\n\nconst link =\n  getHeader(\n    headers,\n    'link'\n  );\n\n\nlet rateLimitResetAt =\n  null;\n\nif (resetEpoch !== null) {\n  const date =\n    new Date(\n      resetEpoch * 1000\n    );\n\n  if (!Number.isNaN(date.getTime())) {\n    rateLimitResetAt =\n      date.toISOString();\n  }\n}\n\n\nlet githubMessage = '';\n\nif (\n  body &&\n  typeof body === 'object' &&\n  !Array.isArray(body)\n) {\n  githubMessage =\n    String(body.message ?? '');\n}\n\n\nconst secondaryRateLimit =\n  (\n    status === 403 ||\n    status === 429\n  )\n  &&\n  (\n    retryAfter !== null ||\n    /secondary rate limit|abuse/i\n      .test(githubMessage)\n  );\n\n\nlet classification =\n  'unexpected_status';\n\nlet category =\n  'unexpected';\n\nlet retryable =\n  false;\n\nlet rateLimitKind =\n  null;\n\n\nif (\n  status >= 200 &&\n  status <= 299\n) {\n  classification =\n    'success';\n\n  category =\n    null;\n}\n\n\nelse if (status === 401) {\n  classification =\n    'authentication_error';\n\n  category =\n    'authentication';\n}\n\n\nelse if (\n  status === 429 ||\n  (\n    status === 403 &&\n    rateLimitRemaining === 0\n  ) ||\n  secondaryRateLimit\n) {\n  classification =\n    'rate_limited';\n\n  category =\n    'rate_limit';\n\n  retryable =\n    true;\n\n  rateLimitKind =\n    secondaryRateLimit\n      ? 'secondary'\n      : 'primary';\n}\n\n\nelse if (status === 403) {\n  classification =\n    'authorization_error';\n\n  category =\n    'authorization';\n}\n\n\nelse if (\n  status >= 500 &&\n  status <= 599\n) {\n  classification =\n    'retryable_server_error';\n\n  category =\n    'github_server';\n\n  retryable =\n    true;\n}\n\n\nreturn {\n  json: {\n    ...ctx,\n\n    http_status:\n      status || null,\n\n    github_request_id:\n      githubRequestId,\n\n    rate_limit_limit:\n      rateLimitLimit,\n\n    rate_limit_remaining:\n      rateLimitRemaining,\n\n    rate_limit_reset_at:\n      rateLimitResetAt,\n\n    retry_after:\n      retryAfter,\n\n    rate_limit_kind:\n      rateLimitKind,\n\n    link_header:\n      link,\n\n    classification,\n\n    category,\n\n    retryable,\n\n    response_body:\n      body\n  }\n};"
+      }
+    },
+    {
+      "id": "086a12c2-6344-4777-ae1f-214640dea732",
+      "name": "Classify Repository Transport Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5392,
+        -208
+      ],
+      "parameters": {
+        "jsCode": "const err =\n  $json ?? {};\n\nconst ctx =\n  $('Prepare Repository Request')\n    .item.json;\n\nconst rawMessage =\n  String(\n    err.message ??\n    err.error?.message ??\n    ''\n  );\n\nconst isTimeout =\n  /timeout|timed out|etimedout|esockettimedout|aborted/i\n    .test(rawMessage);\n\nreturn {\n  json: {\n    ...ctx,\n\n    classification:\n      isTimeout\n        ? 'timeout'\n        : 'network_error',\n\n    category:\n      isTimeout\n        ? 'timeout'\n        : 'network',\n\n    retryable:\n      true,\n\n    http_status:\n      null,\n\n    github_request_id:\n      null,\n\n    rate_limit_limit:\n      null,\n\n    rate_limit_remaining:\n      null,\n\n    rate_limit_reset_at:\n      null,\n\n    retry_after:\n      null,\n\n    safe_transport_message:\n      isTimeout\n        ? 'GitHub repository request timed out'\n        : 'GitHub repository network request failed'\n  }\n};"
+      }
+    },
+    {
+      "id": "a51a0d09-743e-4437-b7ec-193283b52592",
+      "name": "Simulator | Get Repositories",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "retryOnFail": false,
+      "onError": "continueErrorOutput",
+      "position": [
+        5168,
+        -176
+      ],
+      "parameters": {
+        "url": "={{ $json.api_base_url + '/users/' + $json.github_username + '/repos' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "owner"
+            },
+            {
+              "name": "sort",
+              "value": "updated"
+            },
+            {
+              "name": "direction",
+              "value": "desc"
+            },
+            {
+              "name": "per_page",
+              "value": "100"
+            },
+            {
+              "name": "page",
+              "value": "={{ $json.page }}"
+            },
+            {
+              "name": "scenario",
+              "value": "={{ $json.simulator_scenario }}"
+            },
+            {
+              "name": "attempt",
+              "value": "={{ $json.attempt }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "={{ $json.api_version }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "pagination": {
+            "pagination": {
+              "paginationMode": "off"
+            }
+          },
+          "timeout": "={{ $json.timeout_ms }}"
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_02_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_02_NAME"
+        }
+      }
+    },
+    {
+      "id": "10d69383-3821-4206-8eb4-8a164d62b5b8",
+      "name": "06 | Is Repository Success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5616,
+        -496
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "38a32a3f-4e37-4e84-a837-f98efd65705e",
+              "leftValue": "={{ $json.classification === 'success' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "e91c6287-d15a-4ffe-a975-8f105440f87e",
+      "name": "06 | Normalize Repository Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5840,
+        -496
+      ],
+      "parameters": {
+        "jsCode": "const x =\n  $input.first().json;\n\nconst body =\n  x.response_body;\n\nconst errors = [];\n\n\n// --------------------------------------------------\n// Helpers\n// --------------------------------------------------\n\nfunction nullableString(value) {\n  if (\n    value === null ||\n    value === undefined\n  ) {\n    return null;\n  }\n\n  const text =\n    String(value);\n\n  return text.trim() === ''\n    ? null\n    : text;\n}\n\n\nfunction requiredString(\n  value,\n  field,\n  repoIndex\n) {\n  const text =\n    nullableString(value);\n\n  if (text === null) {\n    errors.push(\n      `repository[${repoIndex}] missing ${field}`\n    );\n  }\n\n  return text;\n}\n\n\nfunction nonNegativeInteger(\n  value,\n  field,\n  repoIndex\n) {\n  const n =\n    Number(value ?? 0);\n\n  if (\n    !Number.isInteger(n) ||\n    n < 0\n  ) {\n    errors.push(\n      `repository[${repoIndex}] invalid ${field}`\n    );\n\n    return 0;\n  }\n\n  return n;\n}\n\n\nfunction booleanValue(\n  value,\n  field,\n  repoIndex\n) {\n  if (\n    value === undefined ||\n    value === null\n  ) {\n    return false;\n  }\n\n  if (typeof value !== 'boolean') {\n    errors.push(\n      `repository[${repoIndex}] invalid ${field}`\n    );\n\n    return false;\n  }\n\n  return value;\n}\n\n\nfunction isoOrNull(\n  value,\n  field,\n  repoIndex\n) {\n  if (\n    value === null ||\n    value === undefined ||\n    value === ''\n  ) {\n    return null;\n  }\n\n  const date =\n    new Date(value);\n\n  if (\n    Number.isNaN(\n      date.getTime()\n    )\n  ) {\n    errors.push(\n      `repository[${repoIndex}] invalid ${field}`\n    );\n\n    return null;\n  }\n\n  return date.toISOString();\n}\n\n\n// --------------------------------------------------\n// Body deve ser array\n// --------------------------------------------------\n\nif (!Array.isArray(body)) {\n  return [\n    {\n      json: {\n        valid: false,\n\n        failure: {\n          run_id:\n            x.run_id,\n\n          stage:\n            'repositories',\n\n          node_name:\n            '06 | Normalize Repository Page',\n\n          category:\n            'validation',\n\n          error_code:\n            'repository_page_validation_error',\n\n          http_status:\n            x.http_status,\n\n          github_request_id:\n            x.github_request_id,\n\n          attempt:\n            x.attempt,\n\n          retryable:\n            false,\n\n          safe_message:\n            'Repository response body is not an array'\n        }\n      }\n    }\n  ];\n}\n\n\n// --------------------------------------------------\n// Normalize\n// --------------------------------------------------\n\nconst repositories =\n  body.map(\n    (repo, index) => {\n\n      let githubRepoId = null;\n\n      if (\n        repo?.id === undefined ||\n        repo?.id === null\n      ) {\n        errors.push(\n          `repository[${index}] missing id`\n        );\n      }\n      else {\n        githubRepoId =\n          String(repo.id);\n      }\n\n\n      const topics =\n        repo?.topics === undefined ||\n        repo?.topics === null\n          ? []\n          : repo.topics;\n\n      if (!Array.isArray(topics)) {\n        errors.push(\n          `repository[${index}] invalid topics`\n        );\n      }\n\n\n      return {\n        github_repo_id:\n          githubRepoId,\n\n        owner_login:\n          requiredString(\n            repo?.owner?.login,\n            'owner.login',\n            index\n          ),\n\n        name:\n          requiredString(\n            repo?.name,\n            'name',\n            index\n          ),\n\n        full_name:\n          requiredString(\n            repo?.full_name,\n            'full_name',\n            index\n          ),\n\n        description:\n          nullableString(\n            repo?.description\n          ),\n\n        html_url:\n          requiredString(\n            repo?.html_url,\n            'html_url',\n            index\n          ),\n\n        language:\n          nullableString(\n            repo?.language\n          ),\n\n        topics:\n          Array.isArray(topics)\n            ? topics.map(String)\n            : [],\n\n        visibility:\n          requiredString(\n            repo?.visibility,\n            'visibility',\n            index\n          ),\n\n        default_branch:\n          nullableString(\n            repo?.default_branch\n          ),\n\n        fork:\n          booleanValue(\n            repo?.fork,\n            'fork',\n            index\n          ),\n\n        archived:\n          booleanValue(\n            repo?.archived,\n            'archived',\n            index\n          ),\n\n        disabled:\n          booleanValue(\n            repo?.disabled,\n            'disabled',\n            index\n          ),\n\n        stargazers_count:\n          nonNegativeInteger(\n            repo?.stargazers_count,\n            'stargazers_count',\n            index\n          ),\n\n        watchers_count:\n          nonNegativeInteger(\n            repo?.watchers_count,\n            'watchers_count',\n            index\n          ),\n\n        forks_count:\n          nonNegativeInteger(\n            repo?.forks_count,\n            'forks_count',\n            index\n          ),\n\n        open_issues_count:\n          nonNegativeInteger(\n            repo?.open_issues_count,\n            'open_issues_count',\n            index\n          ),\n\n        size:\n          nonNegativeInteger(\n            repo?.size,\n            'size',\n            index\n          ),\n\n        github_created_at:\n          isoOrNull(\n            repo?.created_at,\n            'created_at',\n            index\n          ),\n\n        github_updated_at:\n          isoOrNull(\n            repo?.updated_at,\n            'updated_at',\n            index\n          ),\n\n        github_pushed_at:\n          isoOrNull(\n            repo?.pushed_at,\n            'pushed_at',\n            index\n          )\n      };\n    }\n  );\n\n\n// --------------------------------------------------\n// Erros\n// --------------------------------------------------\n\nif (errors.length > 0) {\n  return [\n    {\n      json: {\n        valid: false,\n\n        failure: {\n          run_id:\n            x.run_id,\n\n          stage:\n            'repositories',\n\n          node_name:\n            '06 | Normalize Repository Page',\n\n          category:\n            'validation',\n\n          error_code:\n            'repository_validation_error',\n\n          http_status:\n            x.http_status,\n\n          github_request_id:\n            x.github_request_id,\n\n          attempt:\n            x.attempt,\n\n          retryable:\n            false,\n\n          safe_message:\n            errors\n              .slice(0, 10)\n              .join('; ')\n        }\n      }\n    }\n  ];\n}\n\n\n// --------------------------------------------------\n// Pagination\n// --------------------------------------------------\n\nconst link =\n  String(\n    x.link_header ?? ''\n  );\n\nconst hasNextFromLink =\n  /<[^>]+>;\\s*rel=\"next\"/i\n    .test(link);\n\n// Lista vazia SEMPRE encerra.\nconst hasNext =\n  repositories.length > 0 &&\n  hasNextFromLink;\n\n\n// --------------------------------------------------\n// Output\n// --------------------------------------------------\n\nreturn [\n  {\n    json: {\n      valid: true,\n\n      run_id:\n        x.run_id,\n\n      owner_login:\n        x.owner_login,\n\n      github_username:\n        x.github_username,\n\n      api_mode:\n        x.api_mode,\n\n      api_base_url:\n        x.api_base_url,\n\n      api_version:\n        x.api_version,\n\n      max_pages:\n        x.max_pages,\n\n      timeout_ms:\n        x.timeout_ms,\n\n      max_retries:\n        x.max_retries,\n\n      simulator_scenario:\n        x.simulator_scenario,\n\n      stage:\n        'repositories',\n\n      request_kind:\n        'repositories',\n\n      page:\n        x.page,\n\n      attempt:\n        x.attempt,\n\n      has_next:\n        hasNext,\n\n      records_received:\n        repositories.length,\n\n      github_request_id:\n        x.github_request_id,\n\n      rate_limit_limit:\n        x.rate_limit_limit,\n\n      rate_limit_remaining:\n        x.rate_limit_remaining,\n\n      rate_limit_reset_at:\n        x.rate_limit_reset_at,\n\n      repositories\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "caaa2f48-709e-437f-ab9a-d8e31a4f3451",
+      "name": "06 | Is Repository Page Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        6064,
+        -496
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a900af03-e873-494b-a8b1-731cd28812aa",
+              "leftValue": "={{ $json.valid === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "55a7118f-58e4-4585-90f0-1f7e99d2f045",
+      "name": "06 | Extract Repository Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7632,
+        -64
+      ],
+      "parameters": {
+        "jsCode": "return [\n  {\n    json:\n      $input.first().json.failure\n  }\n];"
+      }
+    },
+    {
+      "id": "09ac70e6-1e1a-4422-b8c2-914c4ca033ac",
+      "name": "06 | Upsert Repository Page",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        6288,
+        -592
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n    SELECT $1::jsonb AS j\n),\n\nincoming AS (\n    SELECT *\n    FROM jsonb_to_recordset(\n        (\n            SELECT j -> 'repositories'\n            FROM input\n        )\n    )\n    AS r (\n        github_repo_id TEXT,\n        owner_login TEXT,\n        name TEXT,\n        full_name TEXT,\n        description TEXT,\n        html_url TEXT,\n        language TEXT,\n        topics JSONB,\n        visibility TEXT,\n        default_branch TEXT,\n        fork BOOLEAN,\n        archived BOOLEAN,\n        disabled BOOLEAN,\n        stargazers_count INTEGER,\n        watchers_count INTEGER,\n        forks_count INTEGER,\n        open_issues_count INTEGER,\n        size INTEGER,\n        github_created_at TIMESTAMPTZ,\n        github_updated_at TIMESTAMPTZ,\n        github_pushed_at TIMESTAMPTZ\n    )\n),\n\nexisting AS MATERIALIZED (\n    SELECT\n        gr.github_repo_id\n    FROM public.github_repositories gr\n    JOIN incoming i\n      ON gr.github_repo_id =\n         i.github_repo_id::BIGINT\n),\n\nupserted AS (\n    INSERT INTO public.github_repositories (\n        github_repo_id,\n        owner_login,\n        name,\n        full_name,\n        description,\n        html_url,\n        language,\n        topics,\n        visibility,\n        default_branch,\n        fork,\n        archived,\n        disabled,\n        stargazers_count,\n        watchers_count,\n        forks_count,\n        open_issues_count,\n        size,\n        github_created_at,\n        github_updated_at,\n        github_pushed_at,\n        first_seen_at,\n        last_seen_at,\n        last_seen_run_id,\n        is_active\n    )\n\n    SELECT\n        i.github_repo_id::BIGINT,\n        i.owner_login,\n        i.name,\n        i.full_name,\n        i.description,\n        i.html_url,\n        i.language,\n        i.topics,\n        i.visibility,\n        i.default_branch,\n        i.fork,\n        i.archived,\n        i.disabled,\n        i.stargazers_count,\n        i.watchers_count,\n        i.forks_count,\n        i.open_issues_count,\n        i.size,\n        i.github_created_at,\n        i.github_updated_at,\n        i.github_pushed_at,\n        now(),\n        now(),\n        (\n            SELECT\n                (j ->> 'run_id')::BIGINT\n            FROM input\n        ),\n        true\n\n    FROM incoming i\n\n    ON CONFLICT (github_repo_id)\n    DO UPDATE SET\n        owner_login =\n            EXCLUDED.owner_login,\n\n        name =\n            EXCLUDED.name,\n\n        full_name =\n            EXCLUDED.full_name,\n\n        description =\n            EXCLUDED.description,\n\n        html_url =\n            EXCLUDED.html_url,\n\n        language =\n            EXCLUDED.language,\n\n        topics =\n            EXCLUDED.topics,\n\n        visibility =\n            EXCLUDED.visibility,\n\n        default_branch =\n            EXCLUDED.default_branch,\n\n        fork =\n            EXCLUDED.fork,\n\n        archived =\n            EXCLUDED.archived,\n\n        disabled =\n            EXCLUDED.disabled,\n\n        stargazers_count =\n            EXCLUDED.stargazers_count,\n\n        watchers_count =\n            EXCLUDED.watchers_count,\n\n        forks_count =\n            EXCLUDED.forks_count,\n\n        open_issues_count =\n            EXCLUDED.open_issues_count,\n\n        size =\n            EXCLUDED.size,\n\n        github_created_at =\n            EXCLUDED.github_created_at,\n\n        github_updated_at =\n            EXCLUDED.github_updated_at,\n\n        github_pushed_at =\n            EXCLUDED.github_pushed_at,\n\n        -- NÃO alterar first_seen_at\n\n        last_seen_at =\n            now(),\n\n        last_seen_run_id =\n            EXCLUDED.last_seen_run_id,\n\n        is_active =\n            true\n\n    RETURNING github_repo_id\n),\n\nstats AS (\n    SELECT\n        COUNT(*)::INTEGER\n            AS records_persisted,\n\n        COUNT(*) FILTER (\n            WHERE e.github_repo_id IS NULL\n        )::INTEGER\n            AS records_inserted,\n\n        COUNT(*) FILTER (\n            WHERE e.github_repo_id IS NOT NULL\n        )::INTEGER\n            AS records_updated\n\n    FROM upserted u\n\n    LEFT JOIN existing e\n      ON e.github_repo_id =\n         u.github_repo_id\n)\n\nSELECT\n    (\n        input.j - 'repositories'\n    )\n    ||\n    jsonb_build_object(\n        'records_inserted',\n        stats.records_inserted,\n\n        'records_updated',\n        stats.records_updated\n    )\n    AS context\n\nFROM input\nCROSS JOIN stats;",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "cb4abd04-9950-4baf-a259-2c62570eedf8",
+      "name": "06 | Restore Repository Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6512,
+        -592
+      ],
+      "parameters": {
+        "jsCode": "const context =\n  $input.first().json.context;\n\nreturn [\n  {\n    json:\n      typeof context === 'string'\n        ? JSON.parse(context)\n        : context\n  }\n];"
+      }
+    },
+    {
+      "id": "5098f9ca-e469-4212-bc48-27bc652d6cf8",
+      "name": "06 | Update Run Progress",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        6736,
+        -592
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n    SELECT $1::jsonb AS j\n),\n\nupdated AS (\n    UPDATE public.sync_runs\n    SET\n        heartbeat_at =\n            now(),\n\n        pages_fetched =\n            sync_runs.pages_fetched + 1,\n\n        records_received =\n            sync_runs.records_received\n            +\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'records_received',\n                    ''\n                )::INTEGER,\n                0\n            ),\n\n        records_inserted =\n            sync_runs.records_inserted\n            +\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'records_inserted',\n                    ''\n                )::INTEGER,\n                0\n            ),\n\n        records_updated =\n            sync_runs.records_updated\n            +\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'records_updated',\n                    ''\n                )::INTEGER,\n                0\n            ),\n\n        rate_limit_limit =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'rate_limit_limit',\n                    ''\n                )::INTEGER,\n                sync_runs.rate_limit_limit\n            ),\n\n        rate_limit_remaining =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'rate_limit_remaining',\n                    ''\n                )::INTEGER,\n                sync_runs.rate_limit_remaining\n            ),\n\n        rate_limit_reset_at =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'rate_limit_reset_at',\n                    ''\n                )::TIMESTAMPTZ,\n                sync_runs.rate_limit_reset_at\n            ),\n\n        last_github_request_id =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'github_request_id',\n                    ''\n                ),\n                sync_runs.last_github_request_id\n            )\n\n    FROM input\n\n    WHERE\n        sync_runs.id =\n            (input.j ->> 'run_id')::BIGINT\n\n    RETURNING\n        sync_runs.id\n)\n\nSELECT\n    input.j AS context\nFROM input\nJOIN updated ON true;",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "b7e4770b-44b2-4864-bba9-a7f131f70b46",
+      "name": "06 | Restore Run Progress Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6960,
+        -592
+      ],
+      "parameters": {
+        "jsCode": "const context =\n  $input.first().json.context;\n\nreturn [\n  {\n    json:\n      typeof context === 'string'\n        ? JSON.parse(context)\n        : context\n  }\n];"
+      }
+    },
+    {
+      "id": "d3eefac3-e8f6-4269-974a-00c790f1fba4",
+      "name": "06 | Has Next Page?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        7184,
+        -592
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a20b672b-ccd6-4eee-a92a-e3484d63a48d",
+              "leftValue": "={{ $json.has_next === true && Number($json.records_received) > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "783656a3-6e09-454a-926b-b568e6dbe056",
+      "name": "06 | Reached Page Limit?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        7408,
+        -688
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d9b595ad-455d-4a4b-b372-128f46acd0e2",
+              "leftValue": "={{ Number($json.page) >= Number($json.max_pages) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0c27470f-1edf-4cb2-a3ea-306d92178fa4",
+      "name": "06 | Build Page Limit Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7632,
+        -784
+      ],
+      "parameters": {
+        "jsCode": "const x =\n  $input.first().json;\n\nreturn [\n  {\n    json: {\n      run_id:\n        x.run_id,\n\n      stage:\n        'repositories',\n\n      node_name:\n        '06 | Reached Page Limit?',\n\n      category:\n        'page_limit',\n\n      error_code:\n        'page_limit_exceeded',\n\n      http_status:\n        null,\n\n      github_request_id:\n        x.github_request_id,\n\n      attempt:\n        0,\n\n      retryable:\n        false,\n\n      safe_message:\n        `Repository pagination reached max_pages=${x.max_pages} while rel=\"next\" still exists`\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "5bb27eb0-52c5-4702-8b8b-622fac452d99",
+      "name": "06 | Next Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7632,
+        -448
+      ],
+      "parameters": {
+        "jsCode": "const x = {\n  ...$input.first().json\n};\n\ndelete x.records_received;\ndelete x.records_inserted;\ndelete x.records_updated;\n\nx.page =\n  Number(x.page) + 1;\n\nx.attempt = 0;\n\nreturn [\n  {\n    json: x\n  }\n];"
+      }
+    },
+    {
+      "id": "2ab47775-7d9f-4106-a3de-d3af3b0a5701",
+      "name": "07 | Reconcile Repositories",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        7408,
+        -400
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n    SELECT $1::jsonb AS j\n),\n\ndeactivated AS (\n    UPDATE public.github_repositories\n    SET\n        is_active = false\n\n    FROM input\n\n    WHERE\n        github_repositories.owner_login =\n            input.j ->> 'owner_login'\n\n        AND github_repositories.is_active = true\n\n        AND github_repositories.last_seen_run_id\n            IS DISTINCT FROM\n            (input.j ->> 'run_id')::BIGINT\n\n    RETURNING\n        github_repositories.github_repo_id\n),\n\nstats AS (\n    SELECT\n        COUNT(*)::INTEGER\n            AS records_deactivated\n    FROM deactivated\n)\n\nSELECT\n    input.j\n    ||\n    jsonb_build_object(\n        'records_deactivated',\n        stats.records_deactivated\n    )\n    AS context\n\nFROM input\nCROSS JOIN stats;",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "9023a5a4-f3ee-44af-aa0c-f172c333be7a",
+      "name": "07 | Restore Reconciliation Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7632,
+        -256
+      ],
+      "parameters": {
+        "jsCode": "const context =\n  $input.first().json.context;\n\nreturn [\n  {\n    json:\n      typeof context === 'string'\n        ? JSON.parse(context)\n        : context\n  }\n];"
+      }
+    },
+    {
+      "id": "8cebad91-1597-48b2-be86-228ce70645a4",
+      "name": "07 | Complete Run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        7856,
+        272
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n    SELECT $1::jsonb AS j\n)\n\nUPDATE public.sync_runs\nSET\n    status =\n        'succeeded',\n\n    finished_at =\n        now(),\n\n    heartbeat_at =\n        now(),\n\n    records_deactivated =\n        COALESCE(\n            NULLIF(\n                input.j ->> 'records_deactivated',\n                ''\n            )::INTEGER,\n            0\n        )\n\nFROM input\n\nWHERE\n    sync_runs.id =\n        (input.j ->> 'run_id')::BIGINT\n\nRETURNING\n    sync_runs.id\n        AS run_id,\n\n    sync_runs.owner_login,\n\n    sync_runs.status,\n\n    sync_runs.started_at,\n\n    sync_runs.finished_at,\n\n    sync_runs.pages_fetched,\n\n    sync_runs.records_received,\n\n    sync_runs.records_inserted,\n\n    sync_runs.records_updated,\n\n    sync_runs.records_deactivated,\n\n    sync_runs.rate_limit_limit,\n\n    sync_runs.rate_limit_remaining,\n\n    sync_runs.rate_limit_reset_at,\n\n    sync_runs.last_github_request_id;",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "00982f31-1d2a-4f5e-93ef-a3f523370eb8",
+      "name": "08 | Is Retryable?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2480,
+        224
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1c8b90bd-4ccc-42fd-9b3b-6f53b8f61b48",
+              "leftValue": "={{ $json.retryable === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5cbe6278-38a6-492b-8617-8247e63d7bf2",
+      "name": "08 | Has Attempts Left?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2704,
+        -256
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3ad351e7-eaf4-4553-af6c-587402bf5dd8",
+              "leftValue": "={{ Number($json.attempt) < Number($json.max_retries) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "2ce7bf28-b714-45fc-85e6-f01209b52d95",
+      "name": "08 | Calculate Retry Delay",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2928,
+        -400
+      ],
+      "parameters": {
+        "jsCode": "const x =\n  $input.first().json;\n\nconst attempt =\n  Number(x.attempt ?? 0);\n\nlet delaySeconds =\n  null;\n\nlet delaySource =\n  null;\n\n\n// --------------------------------------------------\n// 1. Retry-After TEM PRIORIDADE\n// --------------------------------------------------\n\nif (\n  x.retry_after !== null &&\n  x.retry_after !== undefined &&\n  x.retry_after !== ''\n) {\n  const numeric =\n    Number(x.retry_after);\n\n  if (\n    Number.isFinite(numeric) &&\n    numeric >= 0\n  ) {\n    delaySeconds =\n      Math.ceil(numeric);\n\n    delaySource =\n      'retry_after';\n  }\n  else {\n    const date =\n      new Date(\n        x.retry_after\n      );\n\n    if (\n      !Number.isNaN(\n        date.getTime()\n      )\n    ) {\n      delaySeconds =\n        Math.max(\n          0,\n          Math.ceil(\n            (\n              date.getTime()\n              -\n              Date.now()\n            )\n            / 1000\n          )\n        );\n\n      delaySource =\n        'retry_after_date';\n    }\n  }\n}\n\n\n// --------------------------------------------------\n// 2. Primary rate limit\n// --------------------------------------------------\n\nif (\n  delaySeconds === null &&\n  x.category === 'rate_limit' &&\n  Number(x.rate_limit_remaining) === 0 &&\n  x.rate_limit_reset_at\n) {\n  const reset =\n    new Date(\n      x.rate_limit_reset_at\n    );\n\n  if (\n    !Number.isNaN(\n      reset.getTime()\n    )\n  ) {\n    delaySeconds =\n      Math.max(\n        1,\n        Math.ceil(\n          (\n            reset.getTime()\n            -\n            Date.now()\n          )\n          / 1000\n        )\n        + 1\n      );\n\n    delaySource =\n      'rate_limit_reset';\n  }\n}\n\n\n// --------------------------------------------------\n// 3. Secondary limit sem Retry-After\n// --------------------------------------------------\n\nif (\n  delaySeconds === null &&\n  x.category === 'rate_limit'\n) {\n  const secondaryDelays =\n    [\n      60,\n      120,\n      240\n    ];\n\n  delaySeconds =\n    secondaryDelays[\n      Math.min(\n        attempt,\n        secondaryDelays.length - 1\n      )\n    ];\n\n  delaySource =\n    'secondary_rate_limit';\n}\n\n\n// --------------------------------------------------\n// 4. Timeout / network / 5xx\n// --------------------------------------------------\n\nif (delaySeconds === null) {\n  const transientDelays =\n    [\n      5,\n      15,\n      45\n    ];\n\n  delaySeconds =\n    transientDelays[\n      Math.min(\n        attempt,\n        transientDelays.length - 1\n      )\n    ];\n\n  delaySource =\n    'transient_error';\n}\n\n\n// --------------------------------------------------\n// Heartbeat seguro.\n//\n// Não esperamos mais de 1h por Wait,\n// porque stale_after = 120 min.\n// --------------------------------------------------\n\nconst waitChunkSeconds =\n  Math.min(\n    delaySeconds,\n    3600\n  );\n\n\nreturn [\n  {\n    json: {\n      ...x,\n\n      retry_delay_seconds:\n        delaySeconds,\n\n      retry_delay_source:\n        delaySource,\n\n      wait_remaining_seconds:\n        delaySeconds,\n\n      wait_chunk_seconds:\n        waitChunkSeconds\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "3ea8a1e7-cf63-4c36-bae8-e54b66bde2ff",
+      "name": "08 | Update Retry Heartbeat",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        3152,
+        -400
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n    SELECT $1::jsonb AS j\n),\n\nupdated AS (\n    UPDATE public.sync_runs\n    SET\n        heartbeat_at = now(),\n\n        rate_limit_limit =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'rate_limit_limit',\n                    ''\n                )::INTEGER,\n                sync_runs.rate_limit_limit\n            ),\n\n        rate_limit_remaining =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'rate_limit_remaining',\n                    ''\n                )::INTEGER,\n                sync_runs.rate_limit_remaining\n            ),\n\n        rate_limit_reset_at =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'rate_limit_reset_at',\n                    ''\n                )::TIMESTAMPTZ,\n                sync_runs.rate_limit_reset_at\n            ),\n\n        last_github_request_id =\n            COALESCE(\n                NULLIF(\n                    input.j ->> 'github_request_id',\n                    ''\n                ),\n                sync_runs.last_github_request_id\n            )\n\n    FROM input\n\n    WHERE\n        sync_runs.id =\n            (input.j ->> 'run_id')::BIGINT\n\n    RETURNING sync_runs.id\n)\n\nSELECT\n    input.j AS context\nFROM input\nJOIN updated ON true;",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_CREDENTIAL_03_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_03_NAME"
+        }
+      }
+    },
+    {
+      "id": "cfb473f6-308e-453b-8d0a-7f3174b980a7",
+      "name": "08 | Restore Retry Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3376,
+        -400
+      ],
+      "parameters": {
+        "jsCode": "const context =\n  $input.first().json.context;\n\nreturn [\n  {\n    json:\n      typeof context === 'string'\n        ? JSON.parse(context)\n        : context\n  }\n];"
+      }
+    },
+    {
+      "id": "2f28fbd2-fca7-4d6b-b526-4bb708649dba",
+      "name": "08 | Wait Retry Chunk",
+      "webhookId": "18e86690-3ba6-46bc-96a4-27f90c442dfb",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3600,
+        -400
+      ],
+      "parameters": {
+        "amount": "={{ $json.wait_chunk_seconds }}"
+      }
+    },
+    {
+      "id": "dfa7ede7-8cc3-4126-961a-37eae6e4659c",
+      "name": "08 | Consume Wait Chunk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3824,
+        -400
+      ],
+      "parameters": {
+        "jsCode": "const x = {\n  ...$input.first().json\n};\n\nconst remaining =\n  Math.max(\n    0,\n    Number(\n      x.wait_remaining_seconds\n      ?? 0\n    )\n    -\n    Number(\n      x.wait_chunk_seconds\n      ?? 0\n    )\n  );\n\nx.wait_remaining_seconds =\n  remaining;\n\nx.wait_chunk_seconds =\n  Math.min(\n    remaining,\n    3600\n  );\n\nreturn [\n  {\n    json: x\n  }\n];"
+      }
+    },
+    {
+      "id": "983c0e5c-6514-454f-8869-7674afa12e19",
+      "name": "08 | More Wait Remaining?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        4048,
+        -400
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "82a9c6e0-df2c-48ba-b0ba-f826bba12e22",
+              "leftValue": "={{ Number($json.wait_remaining_seconds) > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "74563543-62a6-41cf-9279-d499ab57a740",
+      "name": "08 | Increment Attempt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4272,
+        -400
+      ],
+      "parameters": {
+        "jsCode": "const x = {\n  ...$input.first().json\n};\n\nx.attempt =\n  Number(x.attempt ?? 0) + 1;\n\ndelete x.retry_delay_seconds;\ndelete x.retry_delay_source;\ndelete x.wait_remaining_seconds;\ndelete x.wait_chunk_seconds;\n\n// A nova resposta preencherá novamente.\ndelete x.http_status;\ndelete x.github_request_id;\ndelete x.retry_after;\ndelete x.rate_limit_kind;\ndelete x.classification;\ndelete x.category;\ndelete x.retryable;\ndelete x.response_body;\ndelete x.link_header;\n\nreturn [\n  {\n    json: x\n  }\n];"
+      }
+    },
+    {
+      "id": "82315bd4-1209-41ba-b544-0797c19ab61f",
+      "name": "08 | Retry Target",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        4496,
+        -400
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.request_kind }}",
+                    "rightValue": "profile",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "726a42a1-e88c-4a28-9d6c-c0ec4af03faf"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "profile"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9176319c-ee78-488c-8df7-b9e8ee0c7d2d",
+                    "leftValue": "={{ $json.request_kind }}",
+                    "rightValue": "repositories",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "repositories"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "9b618b24-6d69-498d-9a5c-ee3c19d2a47d",
+      "name": "08 | Classify Profile Transport Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        880
+      ],
+      "parameters": {
+        "jsCode": "const err =\n  $json ?? {};\n\nconst ctx =\n  $('Prepare Profile Request')\n    .item.json;\n\nconst rawMessage =\n  String(\n    err.message ??\n    err.error?.message ??\n    ''\n  );\n\nconst isTimeout =\n  /timeout|timed out|etimedout|esockettimedout|aborted/i\n    .test(rawMessage);\n\nreturn {\n  json: {\n    ...ctx,\n\n    classification:\n      isTimeout\n        ? 'timeout'\n        : 'network_error',\n\n    category:\n      isTimeout\n        ? 'timeout'\n        : 'network',\n\n    retryable:\n      true,\n\n    http_status:\n      null,\n\n    github_request_id:\n      null,\n\n    rate_limit_limit:\n      null,\n\n    rate_limit_remaining:\n      null,\n\n    rate_limit_reset_at:\n      null,\n\n    retry_after:\n      null,\n\n    // Não persistimos rawMessage.\n    safe_transport_message:\n      isTimeout\n        ? 'GitHub profile request timed out'\n        : 'GitHub profile network request failed'\n  }\n};"
+      }
+    },
+    {
+      "id": "307c94d4-43a5-48bb-a6c8-151240b8c561",
+      "name": "08 | Build Non-Retryable Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7632,
+        320
+      ],
+      "parameters": {
+        "jsCode": "const x =\n  $input.first().json;\n\nreturn [\n  {\n    json: {\n      run_id:\n        x.run_id,\n\n      stage:\n        x.stage,\n\n      node_name:\n        x.request_kind === 'profile'\n          ? '05 | Get Profile'\n          : '06 | Get Repositories',\n\n      category:\n        x.category ?? 'unexpected',\n\n      error_code:\n        x.classification ??\n        'unexpected_status',\n\n      http_status:\n        x.http_status ?? null,\n\n      github_request_id:\n        x.github_request_id ?? null,\n\n      rate_limit_limit:\n        x.rate_limit_limit ?? null,\n\n      rate_limit_remaining:\n        x.rate_limit_remaining ?? null,\n\n      rate_limit_reset_at:\n        x.rate_limit_reset_at ?? null,\n\n      attempt:\n        Number(x.attempt ?? 0),\n\n      retryable:\n        false,\n\n      safe_message:\n        x.safe_transport_message\n        ??\n        `${x.request_kind} request failed with HTTP ${\n          x.http_status ?? 'unknown'\n        }`\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "4dddd28b-af77-4889-bdb4-ab01596187c0",
+      "name": "08 | Build Max Retries Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7632,
+        128
+      ],
+      "parameters": {
+        "jsCode": "const x =\n  $input.first().json;\n\nreturn [\n  {\n    json: {\n      run_id:\n        x.run_id,\n\n      stage:\n        x.stage,\n\n      node_name:\n        x.request_kind === 'profile'\n          ? '05 | Get Profile'\n          : '06 | Get Repositories',\n\n      category:\n        x.category ?? 'unexpected',\n\n      error_code:\n        'max_retries_exceeded',\n\n      http_status:\n        x.http_status ?? null,\n\n      github_request_id:\n        x.github_request_id ?? null,\n\n      rate_limit_limit:\n        x.rate_limit_limit ?? null,\n\n      rate_limit_remaining:\n        x.rate_limit_remaining ?? null,\n\n      rate_limit_reset_at:\n        x.rate_limit_reset_at ?? null,\n\n      attempt:\n        Number(x.attempt ?? 0),\n\n      retryable:\n        false,\n\n      safe_message:\n        `${x.request_kind} request failed after maximum retry attempts`\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "769e0e8b-97e2-477f-b822-faef41207bdb",
+      "name": "90 | Restore Failure Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8080,
+        -16
+      ],
+      "parameters": {
+        "jsCode": "const context =\n  $input.first().json.context;\n\nreturn [\n  {\n    json:\n      typeof context === 'string'\n        ? JSON.parse(context)\n        : context\n  }\n];"
+      }
+    },
+    {
+      "id": "a0d871e1-02da-44a1-a7bf-9244654bfb78",
+      "name": "90 | Stop Main Workflow",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        8304,
+        -16
+      ],
+      "parameters": {
+        "errorMessage": "={{\n  'P01_SAFE_ERROR:' +\n  JSON.stringify({\n    run_id:\n      $json.run_id,\n\n    stage:\n      $json.stage,\n\n    node_name:\n      $json.node_name,\n\n    http_status:\n      $json.http_status,\n\n    github_request_id:\n      $json.github_request_id,\n\n    category:\n      $json.category,\n\n    attempt:\n      $json.attempt,\n\n    retryable:\n      $json.retryable,\n\n    message:\n      $json.safe_message\n  })\n}}"
+      }
+    },
+    {
+      "id": "2fbea3c0-494e-406a-a31a-34112407cc89",
+      "name": "Is New Run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        912,
+        832
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6472ccfb-9948-4abc-98a1-e125612ee54d",
+              "leftValue": "={{ $json.created === true && $json.id !== null }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Runtime Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Runtime Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Runtime Configuration": {
+      "main": [
+        [
+          {
+            "node": "Validate Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Schema Ready?": {
+      "main": [
+        [
+          {
+            "node": "Close Stale Runs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Configuration": {
+      "main": [
+        [
+          {
+            "node": "Ensure Database Schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Database Schema": {
+      "main": [
+        [
+          {
+            "node": "Is Schema Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Close Stale Runs": {
+      "main": [
+        [
+          {
+            "node": "Create Running Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Stop Schema Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Running Sync": {
+      "main": [
+        [
+          {
+            "node": "Is New Run?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Mode?": {
+      "main": [
+        [
+          {
+            "node": "Simulator | Profile Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Simulator | Profile Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simulator | Profile Request": {
+      "main": [
+        [
+          {
+            "node": "Classify Profile Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "08 | Classify Profile Transport Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Sync Context": {
+      "main": [
+        [
+          {
+            "node": "Prepare Profile Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Profile Request": {
+      "main": [
+        [
+          {
+            "node": "API Mode?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simulator | Profile Request1": {
+      "main": [
+        [
+          {
+            "node": "Classify Profile Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "08 | Classify Profile Transport Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Profile Response": {
+      "main": [
+        [
+          {
+            "node": "Is Profile Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Profile Success": {
+      "main": [
+        [
+          {
+            "node": "Normalize Profile",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "08 | Is Retryable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Profile": {
+      "main": [
+        [
+          {
+            "node": "Is Profile Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Profile Valid?": {
+      "main": [
+        [
+          {
+            "node": "Upsert Profile",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Profile Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Profile Failure": {
+      "main": [
+        [
+          {
+            "node": "90 | Record Run Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Profile": {
+      "main": [
+        [
+          {
+            "node": "Restore Profile Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Profile Context": {
+      "main": [
+        [
+          {
+            "node": "Update Run Profile Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Run Profile Metadata": {
+      "main": [
+        [
+          {
+            "node": "Init Repository Pagination",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init Repository Pagination": {
+      "main": [
+        [
+          {
+            "node": "Prepare Repository Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Repository Request": {
+      "main": [
+        [
+          {
+            "node": "Repository API Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repository API Mode": {
+      "main": [
+        [
+          {
+            "node": "Live | Get Repositories",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Simulator | Get Repositories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Live | Get Repositories": {
+      "main": [
+        [
+          {
+            "node": "Classify Repository Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Classify Repository Transport Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Repository Response": {
+      "main": [
+        [
+          {
+            "node": "06 | Is Repository Success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simulator | Get Repositories": {
+      "main": [
+        [
+          {
+            "node": "Classify Repository Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Classify Repository Transport Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Is Repository Success?": {
+      "main": [
+        [
+          {
+            "node": "06 | Normalize Repository Page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "08 | Is Retryable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Normalize Repository Page": {
+      "main": [
+        [
+          {
+            "node": "06 | Is Repository Page Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Is Repository Page Valid?": {
+      "main": [
+        [
+          {
+            "node": "06 | Upsert Repository Page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "06 | Extract Repository Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Extract Repository Failure": {
+      "main": [
+        [
+          {
+            "node": "90 | Record Run Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Upsert Repository Page": {
+      "main": [
+        [
+          {
+            "node": "06 | Restore Repository Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Restore Repository Context": {
+      "main": [
+        [
+          {
+            "node": "06 | Update Run Progress",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Update Run Progress": {
+      "main": [
+        [
+          {
+            "node": "06 | Restore Run Progress Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Restore Run Progress Context": {
+      "main": [
+        [
+          {
+            "node": "06 | Has Next Page?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Has Next Page?": {
+      "main": [
+        [
+          {
+            "node": "06 | Reached Page Limit?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "07 | Reconcile Repositories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Reached Page Limit?": {
+      "main": [
+        [
+          {
+            "node": "06 | Build Page Limit Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "06 | Next Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Build Page Limit Failure": {
+      "main": [
+        [
+          {
+            "node": "90 | Record Run Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 | Next Page": {
+      "main": [
+        [
+          {
+            "node": "Prepare Repository Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 | Reconcile Repositories": {
+      "main": [
+        [
+          {
+            "node": "07 | Restore Reconciliation Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 | Restore Reconciliation Context": {
+      "main": [
+        [
+          {
+            "node": "07 | Complete Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Classify Profile Transport Error": {
+      "main": [
+        [
+          {
+            "node": "08 | Is Retryable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Repository Transport Error": {
+      "main": [
+        [
+          {
+            "node": "08 | Is Retryable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Is Retryable?": {
+      "main": [
+        [
+          {
+            "node": "08 | Has Attempts Left?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "08 | Build Non-Retryable Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Has Attempts Left?": {
+      "main": [
+        [
+          {
+            "node": "08 | Calculate Retry Delay",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "08 | Build Max Retries Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Calculate Retry Delay": {
+      "main": [
+        [
+          {
+            "node": "08 | Update Retry Heartbeat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Update Retry Heartbeat": {
+      "main": [
+        [
+          {
+            "node": "08 | Restore Retry Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Restore Retry Context": {
+      "main": [
+        [
+          {
+            "node": "08 | Wait Retry Chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Wait Retry Chunk": {
+      "main": [
+        [
+          {
+            "node": "08 | Consume Wait Chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Consume Wait Chunk": {
+      "main": [
+        [
+          {
+            "node": "08 | More Wait Remaining?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | More Wait Remaining?": {
+      "main": [
+        [
+          {
+            "node": "08 | Update Retry Heartbeat",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "08 | Increment Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Increment Attempt": {
+      "main": [
+        [
+          {
+            "node": "08 | Retry Target",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Retry Target": {
+      "main": [
+        [
+          {
+            "node": "Prepare Profile Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Repository Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Build Non-Retryable Failure": {
+      "main": [
+        [
+          {
+            "node": "90 | Record Run Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 | Build Max Retries Failure": {
+      "main": [
+        [
+          {
+            "node": "90 | Record Run Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "90 | Record Run Failure": {
+      "main": [
+        [
+          {
+            "node": "90 | Restore Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "90 | Restore Failure Context": {
+      "main": [
+        [
+          {
+            "node": "90 | Stop Main Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is New Run?": {
+      "main": [
+        [
+          {
+            "node": "Build Sync Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Skipped Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "i7QXkiz6EXgXtYnH",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "69SOeFGXGcDOEsy6",
+      "name": "github-portfolio-sync",
+      "createdAt": "2026-09-28T23:17:52.310Z",
+      "updatedAt": "2026-09-28T23:17:52.310Z"
+    }
+  ],
+  "shared": [],
+  "activeVersion": null
+}

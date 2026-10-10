@@ -1,0 +1,1216 @@
+{
+  "id": "24ahnFgiielJU7Ir",
+  "name": "Github API Simulator",
+  "description": "",
+  "active": true,
+  "activeVersionId": "259292ca-ae24-4b7e-9153-43a4b01ea453",
+  "createdAt": "2026-09-29T09:54:49.356Z",
+  "updatedAt": "2026-10-10T16:40:04.971Z",
+  "isArchived": false,
+  "versionId": "259292ca-ae24-4b7e-9153-43a4b01ea453",
+  "versionCounter": 228,
+  "sourceWorkflowId": null,
+  "triggerCount": 2,
+  "nodes": [
+    {
+      "id": "c0a1474f-835a-4e2e-a6d5-82085e896359",
+      "name": "GET Profile",
+      "webhookId": "3da72337-4263-4f71-bbb2-a8c8dea89093",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -432,
+        -224
+      ],
+      "parameters": {
+        "path": "=p01/github/users/:username",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_02_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_02_NAME"
+        }
+      }
+    },
+    {
+      "id": "4e352f8a-7f54-4b74-9045-17efc056ee94",
+      "name": "GET Repositories",
+      "webhookId": "3da72337-4263-4f71-bbb2-a8c8dea89093",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -432,
+        -32
+      ],
+      "parameters": {
+        "path": "=p01/github/users/:username/repos",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_02_ID",
+          "name": "REPLACE_WITH_CREDENTIAL_02_NAME"
+        }
+      }
+    },
+    {
+      "id": "f903a46d-d6b2-4931-991a-cad01e5e3e0d",
+      "name": "Set Resource | Profile",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -208,
+        -224
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "81a3a5c5-8271-4377-b201-a35c6fa36a1d",
+              "name": "resource",
+              "value": "profile",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "0203905c-8dd9-467f-a6b7-2e4389831d97",
+      "name": "Set Resource | Repos",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -208,
+        -32
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "81a3a5c5-8271-4377-b201-a35c6fa36a1d",
+              "name": "resource",
+              "value": "repos",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "bc51d6ac-9523-4416-8136-6be1032a5ac6",
+      "name": "Normalize Test Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        -128
+      ],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst query = input.query ?? {};\nconst params = input.params ?? {};\nconst headers = input.headers ?? {};\n\nconst allowedScenarios = [\n  'happy',\n  'unauthorized',\n  'forbidden',\n  'primary_rate_limit',\n  'secondary_rate_limit',\n  'server_error',\n  'timeout',\n  'invalid_payload',\n  'page2_error',\n];\n\nconst scenario = String(query.scenario ?? 'happy')\n  .trim()\n  .toLowerCase();\n\nconst page = Math.max(\n  1,\n  Number.parseInt(query.page ?? '1', 10) || 1\n);\n\nconst attempt = Math.max(\n  0,\n  Number.parseInt(query.attempt ?? '0', 10) || 0\n);\n\nreturn [\n  {\n    json: {\n      resource: input.resource,\n\n      username: String(params.username ?? 'octocat'),\n\n      scenario,\n      scenario_valid: allowedScenarios.includes(scenario),\n\n      page,\n      attempt,\n\n      request_headers: headers,\n\n      // Em versões/configurações onde o Webhook expõe a URL,\n      // conseguimos reutilizá-la para montar o Link da paginação.\n      request_url: input.webhookUrl ?? null,\n    },\n  },\n];"
+      }
+    },
+    {
+      "id": "0c9ca22d-dc43-4691-a442-7bc8c7f9c53f",
+      "name": "Switch Scenario",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        -240
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.scenario }}",
+                    "rightValue": "happy",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "4d4cac9e-6dc4-4466-8748-f49175cfa6cb"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "happy"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b618c52d-833b-4a6e-9fc5-350b9e574c37",
+                    "leftValue": "={{ $json.scenario }}",
+                    "rightValue": "unauthorized",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "unauthorized"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "226a42ce-2884-4c89-9dd2-27ebb4d02888",
+                    "leftValue": "={{ $json.scenario }}",
+                    "rightValue": "forbidden",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "forbidden"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "658eb914-f515-4dd9-b5b9-7b2077378431",
+                    "leftValue": "{{ $json.scenario }}",
+                    "rightValue": "primary_rate_limit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "primary_rate_limit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7ac0acfe-5fff-417c-8e4c-2d0b0a52a25f",
+                    "leftValue": "={{ $json.scenario }}",
+                    "rightValue": "secondary_rate_limit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "secondary_rate_limit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a5553ccc-6f35-4459-a0b4-ed59afae244b",
+                    "leftValue": "={{ $json.scenario }}",
+                    "rightValue": "server_error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "server_error"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "bad42b54-9e1e-47e9-8fe8-6b022d25cff7",
+                    "leftValue": "={{ $json.scenario }}",
+                    "rightValue": "timeout",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "timeout"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e3d319eb-3bc1-445b-af7c-417c6ef3bcbc",
+                    "leftValue": "={{ $json.scenario }}",
+                    "rightValue": "invalid_payload",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "invalid_payload"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "82408693-a08e-46aa-8601-c2dc0d5920ed",
+                    "leftValue": "={{ $json.scenario }}",
+                    "rightValue": "page2_error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "page2_error"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      }
+    },
+    {
+      "id": "48369523-0735-4e82-a57e-6f6ee2edd268",
+      "name": "Build Fixture",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        -128
+      ],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst {\n  resource,\n  username,\n  scenario,\n  page,\n  attempt,\n  request_headers,\n  request_url,\n} = input;\n\nconst nowEpoch = Math.floor(Date.now() / 1000);\n\nconst requestId =\n  `P01-${resource.toUpperCase()}-${scenario.toUpperCase()}-${attempt}`;\n\n\n// --------------------------------------------------\n// Helpers\n// --------------------------------------------------\n\nfunction profileFixture() {\n  return {\n    login: username,\n    id: 1001,\n    node_id: 'P01_USER_1001',\n    avatar_url: 'https://example.invalid/avatar.png',\n    html_url: `https://github.com/${username}`,\n    type: 'User',\n    name: 'P01 Test User',\n    public_repos: 3,\n  };\n}\n\n\nfunction repo(id, name) {\n  return {\n    id,\n    name,\n    full_name: `${username}/${name}`,\n    owner: {\n      login: username,\n    },\n    private: false,\n    html_url: `https://github.com/${username}/${name}`,\n    visibility: 'public',\n  };\n}\n\n\nfunction repositoryFixture(currentPage) {\n\n  if (currentPage === 1) {\n    return [\n      repo(2001, 'project-alpha'),\n      repo(2002, 'project-beta'),\n    ];\n  }\n\n  if (currentPage === 2) {\n    return [\n      repo(2003, 'project-gamma'),\n    ];\n  }\n\n  return [];\n}\n\n\nfunction successBody() {\n  return resource === 'profile'\n    ? profileFixture()\n    : repositoryFixture(page);\n}\n\n\n// --------------------------------------------------\n// Default response\n// --------------------------------------------------\n\nlet statusCode = 200;\nlet body = successBody();\n\nlet rateLimitLimit = '60';\nlet rateLimitRemaining = '57';\nlet rateLimitReset = String(nowEpoch + 3600);\n\nlet retryAfter = null;\nlet link = null;\n\n\n// --------------------------------------------------\n// Scenario\n// --------------------------------------------------\n\nswitch (scenario) {\n\n  case 'happy':\n    break;\n\n\n  case 'unauthorized':\n\n    statusCode = 401;\n\n    body = {\n      message: 'Bad credentials',\n    };\n\n    break;\n\n\n  case 'forbidden':\n\n    statusCode = 403;\n\n    rateLimitRemaining = '100';\n\n    body = {\n      message: 'Resource not accessible by integration',\n    };\n\n    break;\n\n\n  case 'primary_rate_limit':\n\n    if (attempt === 0) {\n\n      statusCode = 403;\n\n      rateLimitRemaining = '0';\n\n      // curto de propósito para teste\n      rateLimitReset = String(nowEpoch + 2);\n\n      body = {\n        message: 'API rate limit exceeded',\n      };\n    }\n\n    break;\n\n\n  case 'secondary_rate_limit':\n\n    if (attempt === 0) {\n\n      statusCode = 429;\n\n      retryAfter = '2';\n\n      body = {\n        message:\n          'You have exceeded a secondary rate limit.',\n      };\n    }\n\n    break;\n\n\n  case 'server_error':\n\n    statusCode = 500;\n\n    body = {\n      message: 'Internal Server Error',\n    };\n\n    break;\n\n\n  case 'timeout':\n\n    // O Wait anterior já causou o comportamento\n    // de timeout. Caso o cliente continue conectado,\n    // respondemos normalmente.\n    statusCode = 200;\n    body = successBody();\n\n    break;\n\n\n  case 'page2_error':\n\n    if (resource === 'repos' && page === 2) {\n      statusCode = 500;\n      body = { message: 'Internal Server Error on repository page 2' };\n    }\n    break;\n\n  case 'invalid_payload':\n\n    statusCode = 200;\n\n    if (resource === 'profile') {\n\n      // Perfil válido: o caso exercita a validação de repositórios.\n      body = profileFixture();\n\n    } else {\n\n      // owner.login propositalmente ausente\n      body = [\n        {\n          id: 2999,\n          name: 'invalid-repository',\n          full_name: `${username}/invalid-repository`,\n          owner: {},\n          visibility: 'public',\n        },\n      ];\n    }\n\n    break;\n\n\n  default:\n\n    statusCode = 400;\n\n    body = {\n      message: `Unknown simulator scenario: ${scenario}`,\n    };\n}\n\n\n// --------------------------------------------------\n// Pagination\n// --------------------------------------------------\n\nif (\n  statusCode === 200 &&\n  resource === 'repos' &&\n  page === 1 &&\n  scenario !== 'invalid_payload'\n) {\n\n  let baseUrl = request_url;\n\n  // fallback caso webhookUrl não esteja disponível\n  if (!baseUrl) {\n\n    const headers = request_headers ?? {};\n\n    const proto =\n      String(\n        headers['x-forwarded-proto'] ?? 'http'\n      )\n        .split(',')[0]\n        .trim();\n\n    const host =\n      headers['x-forwarded-host'] ??\n      headers.host ??\n      'localhost:5678';\n\n    baseUrl =\n      `${proto}://${host}` +\n      `webhook-test/3da72337-4263-4f71-bbb2-a8c8dea89093/p01/github/users/` +\n      `${encodeURIComponent(username)}/repos`;\n    \n  }\n\n  baseUrl = String(baseUrl).split('?')[0];\n  console.log(baseUrl)\n  console.log('log')\n\n  \n  link =\n    `<${baseUrl}?scenario=${encodeURIComponent(scenario)}&page=2&attempt=${attempt}>; rel=\"next\"`;\n}\n\n\n// --------------------------------------------------\n// Output\n// --------------------------------------------------\n\nreturn [\n  {\n    json: {\n      ...input,\n\n      response: {\n        status_code: statusCode,\n\n        body,\n\n        headers: {\n          content_type: 'application/json',\n          request_id: requestId,\n\n          rate_limit_limit: rateLimitLimit,\n          rate_limit_remaining: rateLimitRemaining,\n          rate_limit_reset: rateLimitReset,\n\n          retry_after: retryAfter,\n          link: link\n        },\n      },\n    },\n  },\n];"
+      }
+    },
+    {
+      "id": "6e7eb14a-76ea-411a-a4a6-6af902c329fe",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        912,
+        -128
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response.body }}",
+        "options": {
+          "responseCode": "={{ $json.response.status_code }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "Application/json"
+              },
+              {
+                "name": "X-Github-Request-Id",
+                "value": "={{ $json.response.headers.request_id }}"
+              },
+              {
+                "name": "X-RateLimit-Limit",
+                "value": "={{ $json.response.headers.rate_limit_limit }}"
+              },
+              {
+                "name": "X-RateLimit-Remaining",
+                "value": "={{ $json.response.headers.rate_limit_remaining }}"
+              },
+              {
+                "name": "X-RateLimit-Reset",
+                "value": "={{ $json.response.headers.rate_limit_reset }}"
+              },
+              {
+                "name": "link",
+                "value": "={{ $json.response.headers.link }}"
+              },
+              {
+                "name": "={{ $json.response.headers.retry_after ? 'Retry-After' : 'X-P01-No-Retry-After' }}",
+                "value": "={{ $json.response.headers.retry_after ?? \"\" }}"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "3e4ac933-e172-49f4-98df-df27693a2636",
+      "name": "Simulate Timeout",
+      "webhookId": "0f7f1411-d832-46a8-96b3-91ccb5d65754",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        -48
+      ],
+      "parameters": {
+        "amount": 35
+      }
+    }
+  ],
+  "connections": {
+    "GET Repositories": {
+      "main": [
+        [
+          {
+            "node": "Set Resource | Repos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Profile": {
+      "main": [
+        [
+          {
+            "node": "Set Resource | Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Resource | Repos": {
+      "main": [
+        [
+          {
+            "node": "Normalize Test Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Resource | Profile": {
+      "main": [
+        [
+          {
+            "node": "Normalize Test Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Test Request": {
+      "main": [
+        [
+          {
+            "node": "Switch Scenario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Scenario": {
+      "main": [
+        [
+          {
+            "node": "Build Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Simulate Timeout",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Fixture": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simulate Timeout": {
+      "main": [
+        [
+          {
+            "node": "Build Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "69SOeFGXGcDOEsy6",
+      "name": "github-portfolio-sync",
+      "createdAt": "2026-09-28T23:17:52.310Z",
+      "updatedAt": "2026-09-28T23:17:52.310Z"
+    }
+  ],
+  "shared": [],
+  "activeVersion": {
+    "versionId": "259292ca-ae24-4b7e-9153-43a4b01ea453",
+    "workflowId": "24ahnFgiielJU7Ir",
+    "nodes": [
+      {
+        "id": "c0a1474f-835a-4e2e-a6d5-82085e896359",
+        "name": "GET Profile",
+        "webhookId": "3da72337-4263-4f71-bbb2-a8c8dea89093",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          -432,
+          -224
+        ],
+        "parameters": {
+          "path": "=p01/github/users/:username",
+          "authentication": "headerAuth",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "REPLACE_WITH_CREDENTIAL_02_ID",
+            "name": "REPLACE_WITH_CREDENTIAL_02_NAME"
+          }
+        }
+      },
+      {
+        "id": "4e352f8a-7f54-4b74-9045-17efc056ee94",
+        "name": "GET Repositories",
+        "webhookId": "3da72337-4263-4f71-bbb2-a8c8dea89093",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          -432,
+          -32
+        ],
+        "parameters": {
+          "path": "=p01/github/users/:username/repos",
+          "authentication": "headerAuth",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "REPLACE_WITH_CREDENTIAL_02_ID",
+            "name": "REPLACE_WITH_CREDENTIAL_02_NAME"
+          }
+        }
+      },
+      {
+        "id": "f903a46d-d6b2-4931-991a-cad01e5e3e0d",
+        "name": "Set Resource | Profile",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.5,
+        "position": [
+          -208,
+          -224
+        ],
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "81a3a5c5-8271-4377-b201-a35c6fa36a1d",
+                "name": "resource",
+                "value": "profile",
+                "type": "string"
+              }
+            ]
+          },
+          "includeOtherFields": true,
+          "options": {}
+        }
+      },
+      {
+        "id": "0203905c-8dd9-467f-a6b7-2e4389831d97",
+        "name": "Set Resource | Repos",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.5,
+        "position": [
+          -208,
+          -32
+        ],
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "81a3a5c5-8271-4377-b201-a35c6fa36a1d",
+                "name": "resource",
+                "value": "repos",
+                "type": "string"
+              }
+            ]
+          },
+          "includeOtherFields": true,
+          "options": {}
+        }
+      },
+      {
+        "id": "bc51d6ac-9523-4416-8136-6be1032a5ac6",
+        "name": "Normalize Test Request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          16,
+          -128
+        ],
+        "parameters": {
+          "jsCode": "const input = $input.first().json;\n\nconst query = input.query ?? {};\nconst params = input.params ?? {};\nconst headers = input.headers ?? {};\n\nconst allowedScenarios = [\n  'happy',\n  'unauthorized',\n  'forbidden',\n  'primary_rate_limit',\n  'secondary_rate_limit',\n  'server_error',\n  'timeout',\n  'invalid_payload',\n  'page2_error',\n];\n\nconst scenario = String(query.scenario ?? 'happy')\n  .trim()\n  .toLowerCase();\n\nconst page = Math.max(\n  1,\n  Number.parseInt(query.page ?? '1', 10) || 1\n);\n\nconst attempt = Math.max(\n  0,\n  Number.parseInt(query.attempt ?? '0', 10) || 0\n);\n\nreturn [\n  {\n    json: {\n      resource: input.resource,\n\n      username: String(params.username ?? 'octocat'),\n\n      scenario,\n      scenario_valid: allowedScenarios.includes(scenario),\n\n      page,\n      attempt,\n\n      request_headers: headers,\n\n      // Em versões/configurações onde o Webhook expõe a URL,\n      // conseguimos reutilizá-la para montar o Link da paginação.\n      request_url: input.webhookUrl ?? null,\n    },\n  },\n];"
+        }
+      },
+      {
+        "id": "0c9ca22d-dc43-4691-a442-7bc8c7f9c53f",
+        "name": "Switch Scenario",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.4,
+        "position": [
+          240,
+          -240
+        ],
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.scenario }}",
+                      "rightValue": "happy",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "id": "4d4cac9e-6dc4-4466-8748-f49175cfa6cb"
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "happy"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "b618c52d-833b-4a6e-9fc5-350b9e574c37",
+                      "leftValue": "={{ $json.scenario }}",
+                      "rightValue": "unauthorized",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "unauthorized"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "226a42ce-2884-4c89-9dd2-27ebb4d02888",
+                      "leftValue": "={{ $json.scenario }}",
+                      "rightValue": "forbidden",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "forbidden"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "658eb914-f515-4dd9-b5b9-7b2077378431",
+                      "leftValue": "{{ $json.scenario }}",
+                      "rightValue": "primary_rate_limit",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "primary_rate_limit"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "7ac0acfe-5fff-417c-8e4c-2d0b0a52a25f",
+                      "leftValue": "={{ $json.scenario }}",
+                      "rightValue": "secondary_rate_limit",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "secondary_rate_limit"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "a5553ccc-6f35-4459-a0b4-ed59afae244b",
+                      "leftValue": "={{ $json.scenario }}",
+                      "rightValue": "server_error",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "server_error"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "bad42b54-9e1e-47e9-8fe8-6b022d25cff7",
+                      "leftValue": "={{ $json.scenario }}",
+                      "rightValue": "timeout",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "timeout"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "e3d319eb-3bc1-445b-af7c-417c6ef3bcbc",
+                      "leftValue": "={{ $json.scenario }}",
+                      "rightValue": "invalid_payload",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "invalid_payload"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "82408693-a08e-46aa-8601-c2dc0d5920ed",
+                      "leftValue": "={{ $json.scenario }}",
+                      "rightValue": "page2_error",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "page2_error"
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra"
+          }
+        }
+      },
+      {
+        "id": "48369523-0735-4e82-a57e-6f6ee2edd268",
+        "name": "Build Fixture",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          688,
+          -128
+        ],
+        "parameters": {
+          "jsCode": "const input = $input.first().json;\n\nconst {\n  resource,\n  username,\n  scenario,\n  page,\n  attempt,\n  request_headers,\n  request_url,\n} = input;\n\nconst nowEpoch = Math.floor(Date.now() / 1000);\n\nconst requestId =\n  `P01-${resource.toUpperCase()}-${scenario.toUpperCase()}-${attempt}`;\n\n\n// --------------------------------------------------\n// Helpers\n// --------------------------------------------------\n\nfunction profileFixture() {\n  return {\n    login: username,\n    id: 1001,\n    node_id: 'P01_USER_1001',\n    avatar_url: 'https://example.invalid/avatar.png',\n    html_url: `https://github.com/${username}`,\n    type: 'User',\n    name: 'P01 Test User',\n    public_repos: 3,\n  };\n}\n\n\nfunction repo(id, name) {\n  return {\n    id,\n    name,\n    full_name: `${username}/${name}`,\n    owner: {\n      login: username,\n    },\n    private: false,\n    html_url: `https://github.com/${username}/${name}`,\n    visibility: 'public',\n  };\n}\n\n\nfunction repositoryFixture(currentPage) {\n\n  if (currentPage === 1) {\n    return [\n      repo(2001, 'project-alpha'),\n      repo(2002, 'project-beta'),\n    ];\n  }\n\n  if (currentPage === 2) {\n    return [\n      repo(2003, 'project-gamma'),\n    ];\n  }\n\n  return [];\n}\n\n\nfunction successBody() {\n  return resource === 'profile'\n    ? profileFixture()\n    : repositoryFixture(page);\n}\n\n\n// --------------------------------------------------\n// Default response\n// --------------------------------------------------\n\nlet statusCode = 200;\nlet body = successBody();\n\nlet rateLimitLimit = '60';\nlet rateLimitRemaining = '57';\nlet rateLimitReset = String(nowEpoch + 3600);\n\nlet retryAfter = null;\nlet link = null;\n\n\n// --------------------------------------------------\n// Scenario\n// --------------------------------------------------\n\nswitch (scenario) {\n\n  case 'happy':\n    break;\n\n\n  case 'unauthorized':\n\n    statusCode = 401;\n\n    body = {\n      message: 'Bad credentials',\n    };\n\n    break;\n\n\n  case 'forbidden':\n\n    statusCode = 403;\n\n    rateLimitRemaining = '100';\n\n    body = {\n      message: 'Resource not accessible by integration',\n    };\n\n    break;\n\n\n  case 'primary_rate_limit':\n\n    if (attempt === 0) {\n\n      statusCode = 403;\n\n      rateLimitRemaining = '0';\n\n      // curto de propósito para teste\n      rateLimitReset = String(nowEpoch + 2);\n\n      body = {\n        message: 'API rate limit exceeded',\n      };\n    }\n\n    break;\n\n\n  case 'secondary_rate_limit':\n\n    if (attempt === 0) {\n\n      statusCode = 429;\n\n      retryAfter = '2';\n\n      body = {\n        message:\n          'You have exceeded a secondary rate limit.',\n      };\n    }\n\n    break;\n\n\n  case 'server_error':\n\n    statusCode = 500;\n\n    body = {\n      message: 'Internal Server Error',\n    };\n\n    break;\n\n\n  case 'timeout':\n\n    // O Wait anterior já causou o comportamento\n    // de timeout. Caso o cliente continue conectado,\n    // respondemos normalmente.\n    statusCode = 200;\n    body = successBody();\n\n    break;\n\n\n  case 'page2_error':\n\n    if (resource === 'repos' && page === 2) {\n      statusCode = 500;\n      body = { message: 'Internal Server Error on repository page 2' };\n    }\n    break;\n\n  case 'invalid_payload':\n\n    statusCode = 200;\n\n    if (resource === 'profile') {\n\n      // Perfil válido: o caso exercita a validação de repositórios.\n      body = profileFixture();\n\n    } else {\n\n      // owner.login propositalmente ausente\n      body = [\n        {\n          id: 2999,\n          name: 'invalid-repository',\n          full_name: `${username}/invalid-repository`,\n          owner: {},\n          visibility: 'public',\n        },\n      ];\n    }\n\n    break;\n\n\n  default:\n\n    statusCode = 400;\n\n    body = {\n      message: `Unknown simulator scenario: ${scenario}`,\n    };\n}\n\n\n// --------------------------------------------------\n// Pagination\n// --------------------------------------------------\n\nif (\n  statusCode === 200 &&\n  resource === 'repos' &&\n  page === 1 &&\n  scenario !== 'invalid_payload'\n) {\n\n  let baseUrl = request_url;\n\n  // fallback caso webhookUrl não esteja disponível\n  if (!baseUrl) {\n\n    const headers = request_headers ?? {};\n\n    const proto =\n      String(\n        headers['x-forwarded-proto'] ?? 'http'\n      )\n        .split(',')[0]\n        .trim();\n\n    const host =\n      headers['x-forwarded-host'] ??\n      headers.host ??\n      'localhost:5678';\n\n    baseUrl =\n      `${proto}://${host}` +\n      `webhook-test/3da72337-4263-4f71-bbb2-a8c8dea89093/p01/github/users/` +\n      `${encodeURIComponent(username)}/repos`;\n    \n  }\n\n  baseUrl = String(baseUrl).split('?')[0];\n  console.log(baseUrl)\n  console.log('log')\n\n  \n  link =\n    `<${baseUrl}?scenario=${encodeURIComponent(scenario)}&page=2&attempt=${attempt}>; rel=\"next\"`;\n}\n\n\n// --------------------------------------------------\n// Output\n// --------------------------------------------------\n\nreturn [\n  {\n    json: {\n      ...input,\n\n      response: {\n        status_code: statusCode,\n\n        body,\n\n        headers: {\n          content_type: 'application/json',\n          request_id: requestId,\n\n          rate_limit_limit: rateLimitLimit,\n          rate_limit_remaining: rateLimitRemaining,\n          rate_limit_reset: rateLimitReset,\n\n          retry_after: retryAfter,\n          link: link\n        },\n      },\n    },\n  },\n];"
+        }
+      },
+      {
+        "id": "6e7eb14a-76ea-411a-a4a6-6af902c329fe",
+        "name": "Respond to Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          912,
+          -128
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json.response.body }}",
+          "options": {
+            "responseCode": "={{ $json.response.status_code }}",
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Content-Type",
+                  "value": "Application/json"
+                },
+                {
+                  "name": "X-Github-Request-Id",
+                  "value": "={{ $json.response.headers.request_id }}"
+                },
+                {
+                  "name": "X-RateLimit-Limit",
+                  "value": "={{ $json.response.headers.rate_limit_limit }}"
+                },
+                {
+                  "name": "X-RateLimit-Remaining",
+                  "value": "={{ $json.response.headers.rate_limit_remaining }}"
+                },
+                {
+                  "name": "X-RateLimit-Reset",
+                  "value": "={{ $json.response.headers.rate_limit_reset }}"
+                },
+                {
+                  "name": "link",
+                  "value": "={{ $json.response.headers.link }}"
+                },
+                {
+                  "name": "={{ $json.response.headers.retry_after ? 'Retry-After' : 'X-P01-No-Retry-After' }}",
+                  "value": "={{ $json.response.headers.retry_after ?? \"\" }}"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "3e4ac933-e172-49f4-98df-df27693a2636",
+        "name": "Simulate Timeout",
+        "webhookId": "0f7f1411-d832-46a8-96b3-91ccb5d65754",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          464,
+          -48
+        ],
+        "parameters": {
+          "amount": 35
+        }
+      }
+    ],
+    "connections": {
+      "GET Repositories": {
+        "main": [
+          [
+            {
+              "node": "Set Resource | Repos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "GET Profile": {
+        "main": [
+          [
+            {
+              "node": "Set Resource | Profile",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Resource | Repos": {
+        "main": [
+          [
+            {
+              "node": "Normalize Test Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Resource | Profile": {
+        "main": [
+          [
+            {
+              "node": "Normalize Test Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Test Request": {
+        "main": [
+          [
+            {
+              "node": "Switch Scenario",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Switch Scenario": {
+        "main": [
+          [
+            {
+              "node": "Build Fixture",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build Fixture",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build Fixture",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build Fixture",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build Fixture",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build Fixture",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Simulate Timeout",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build Fixture",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build Fixture",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build Fixture",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Fixture": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Simulate Timeout": {
+        "main": [
+          [
+            {
+              "node": "Build Fixture",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Douglas E Silva",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "createdAt": "2026-10-10T16:40:04.974Z",
+    "updatedAt": "2026-10-10T16:40:04.974Z",
+    "workflowPublishHistory": [
+      {
+        "id": 25,
+        "workflowId": "24ahnFgiielJU7Ir",
+        "versionId": "259292ca-ae24-4b7e-9153-43a4b01ea453",
+        "event": "activated",
+        "userId": "97cb7e86-2340-4ee9-97a6-b4951ec9a5cf",
+        "createdAt": "2026-10-10T16:40:05.074Z"
+      }
+    ]
+  }
+}
