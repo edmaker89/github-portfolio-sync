@@ -5,10 +5,10 @@
   "active": false,
   "activeVersionId": null,
   "createdAt": "2026-09-27T11:37:07.848Z",
-  "updatedAt": "2026-10-10T16:51:22.775Z",
+  "updatedAt": "2026-10-10T17:26:48.337Z",
   "isArchived": false,
-  "versionId": "096edf19-ceea-4266-9081-902e50f84127",
-  "versionCounter": 630,
+  "versionId": "25070d7f-24ca-4323-a668-9526b53c09f4",
+  "versionCounter": 638,
   "sourceWorkflowId": null,
   "triggerCount": 0,
   "nodes": [
@@ -361,8 +361,8 @@
       "retryOnFail": false,
       "onError": "continueErrorOutput",
       "position": [
-        1808,
-        928
+        1792,
+        752
       ],
       "parameters": {
         "url": "={{ $json.api_base_url + '/users/' + $json.github_username }}",
@@ -443,8 +443,8 @@
       "retryOnFail": false,
       "onError": "continueErrorOutput",
       "position": [
-        1808,
-        464
+        1792,
+        576
       ],
       "parameters": {
         "url": "={{ $json.api_base_url + '/users/' + $json.github_username }}",
@@ -1499,7 +1499,7 @@
       "typeVersion": 2,
       "position": [
         2032,
-        880
+        752
       ],
       "parameters": {
         "jsCode": "const err =\n  $json ?? {};\n\nconst ctx =\n  $('Prepare Profile Request')\n    .item.json;\n\nconst rawMessage =\n  String(\n    err.message ??\n    err.error?.message ??\n    ''\n  );\n\nconst isTimeout =\n  /timeout|timed out|etimedout|esockettimedout|aborted/i\n    .test(rawMessage);\n\nreturn {\n  json: {\n    ...ctx,\n\n    classification:\n      isTimeout\n        ? 'timeout'\n        : 'network_error',\n\n    category:\n      isTimeout\n        ? 'timeout'\n        : 'network',\n\n    retryable:\n      true,\n\n    http_status:\n      null,\n\n    github_request_id:\n      null,\n\n    rate_limit_limit:\n      null,\n\n    rate_limit_remaining:\n      null,\n\n    rate_limit_reset_at:\n      null,\n\n    retry_after:\n      null,\n\n    // Não persistimos rawMessage.\n    safe_transport_message:\n      isTimeout\n        ? 'GitHub profile request timed out'\n        : 'GitHub profile network request failed'\n  }\n};"
